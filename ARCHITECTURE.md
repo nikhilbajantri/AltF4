@@ -1,56 +1,55 @@
 # Architecture
 
-## Part 1 Diagram
+## Part 1: Current architecture diagram
+
 ```mermaid
 flowchart TD
-    client["Client, CLI, or test"] --> serve["Serve reads request"]
-    serve --> workers["One worker thread per writer"]
-    workers --> api["KVDB put, delete, or batch"]
-    api --> validate["1. Validate and encode"]
-    validate --> lock["2. Take engine lock"]
-    lock --> poison["3. Check poisoned state"]
-    poison --> space["4. Check space and delete reserve"]
-    space -->|Fits| write["5. Write frame with os.pwrite"]
-    write --> sync["6. os.fsync database file"]
-    sync --> index["7. Update in-memory index"]
-    index --> returned["8. Return from engine"]
-    returned --> ack["9. Serve sends ACK"]
-
-    space -->|Full, no reclaimable space| full["Return DISKFULL; write nothing"]
-    space -->|Full, dead bytes exist| compact_retry["Compact once, then retry space check"]
-    compact_retry --> space
-
-    open["Open database"] --> flock["Acquire flock"]
-    flock --> temps["Remove leftover .compact and .init files"]
-    temps --> header["Create if missing; validate header"]
-    header --> scan["Scan frames and check length and CRC"]
-    scan --> apply["Apply valid operations to rebuild index"]
-    apply --> scan
-    scan -->|Incomplete or CRC-bad tail| truncate["ftruncate to last valid frame; fsync"]
-    truncate --> ready["Database ready"]
-    apply --> ready
-    scan -->|CRC-valid malformed frame| corrupt["Raise CorruptError; do not truncate"]
-
-    compact["Compaction"] --> copy["Write live keys to .compact"]
-    copy --> temp_sync["fsync temporary file and close"]
-    temp_sync --> replace["os.replace .compact over database"]
-    replace --> dir_sync["fsync parent directory"]
-    dir_sync --> swap["Reopen file and swap engine state"]
-
-    subgraph format["On-disk file layout"]
-        header_layout["HEADER: 16 bytes = magic 8 + version u32 4 + header CRC u32 4"]
-        frame_layout["FRAME: 12-byte header = length u64 8 + CRC u32 4, followed by payload"]
-        payload_layout["PAYLOAD: operation count u32 4, then operations"]
-        op_layout["OP header: 7 bytes = type u8 1 + key length u16 2 + value length u32 4"]
-        header_layout --> frame_layout --> payload_layout --> op_layout
-    end
+  SERVE["serve stdin requests"] --> WORKERS["One worker/queue per writer; FIFO within each writer"]
+  WORKERS --> API
+  API["Client API / CLI / stdin serve: put, delete, batch, get"] --> V["1. Validate operations; calculate full frame length"]
+  V --> L["2. Acquire one per-handle mutex; reject poisoned handle"]
+  L --> CAP["3. Disk-full guard: logical end + frame + 1-byte tail guard<br/>must fit max_bytes minus delete reserve; compact/retry once"]
+  CAP --> ENC["4. Prepare CRC frame; large encodings use bounded 4 MiB chunks"]
+  ENC --> W["5. os.pwrite full frame at logical end<br/>overwrites old guard; loop on short writes"]
+  W --> G["6. os.pwrite one 00 guard byte after frame"]
+  G --> FS["7. os.fsync data file"]
+  FS --> IX["8. Publish whole batch to RAM index; advance logical end<br/>optional crash-safe auto-compaction while mutex held"]
+  IX --> ACK["9. Release mutex; return success; serve prints/flushed ACK"]
+  API --> GET["get: same mutex; RAM index lookup; os.pread value"]
+  GET --> RAM["RAM only: key -> value offset / length; index not persisted"]
+  IX --> RAM
+  W --> DISK["One authoritative file, little endian<br/>HEADER 16: magic 8 + version u32 4 + header CRC32 4<br/>FRAME: payload length u64 8 + CRC32 4 + payload<br/>payload: nops u32 4; OP: type u8 1 + klen u16 2 + vlen u32 4 + key + value<br/>CRC32 covers 8 length bytes and all payload bytes<br/>Complete valid frame is commit unit; no trailing commit marker<br/>Optional EOF guard: 00, 1 byte outside CRC; empty file is header only"]
+  OPEN["open(path)"] --> FLOCK["flock LOCK_EX / LOCK_NB on path.lock<br/>one process handle; concurrent threads share it"]
+  FLOCK --> CLEAN["Remove stale .init/.compact; create header if missing<br/>fsync temp -> os.replace -> fsync parent directory"]
+  CLEAN --> HDR["mmap and validate header"]
+  HDR --> SCAN["Scan complete CRC-valid frames; replay into RAM index"]
+  SCAN -->|"next valid frame"| SCAN
+  SCAN -->|"incomplete/bad-CRC tail"| REPAIR["ftruncate valid prefix; restore guard if nonempty and cap allows; fsync"]
+  SCAN -->|"complete EOF, guard missing"| RESTORE["Restore guard and fsync if nonempty and cap allows<br/>legacy capped files remain readable without growth"]
+  SCAN -->|"clean EOF / guard present"| READY["Ready; logical end excludes guard"]
+  SCAN -->|"CRC-valid malformed payload"| ERROR["CorruptError; do not truncate"]
+  REPAIR --> READY
+  RESTORE --> READY
+  READY --> API
+  COMPACT["compact: hold same mutex"] --> COPY["Copy live values to path.compact; rebuild new RAM index<br/>cap includes final guard; frames <=4 MiB and <=10,000 ops"]
+  COPY --> TMP["Append guard if nonempty; fsync temp; close"]
+  TMP --> RENAME["os.replace temporary file over authoritative file"]
+  RENAME --> DIR["fsync parent directory; reopen new file"]
+  DIR --> SWAP["Swap descriptor / index / logical end before next write"]
+  SWAP --> DISK
+  CAP -->|"dead bytes available"| COMPACT
+  CAP -->|"cannot fit after reclaim"| FULL["DISKFULL; rejected mutation is not appended"]
+  W -->|"I/O error"| ROLLBACK["Restore previous end + guard; fsync rollback; poison handle"]
+  G -->|"I/O error"| ROLLBACK
+  FS -->|"I/O error"| ROLLBACK
+  ROLLBACK -->|"rollback also fails"| UNCERTAIN["UNCERTAIN; reopen and reconcile; no ACK"]
 ```
 
 ## Part 2 Proof table
 | ID | Scenario | Disk state at the kill | Mechanism | Where in code (file:function) | Verified by |
 |---|---|---|---|---|---|
-| A1 | Kill before any bytes of a put reach the file → key absent or previous value | `H prev`; the new frame exists only in process memory | Nothing reached the file, so recovery replays exactly the previous frames. The key keeps its previous value or stays absent. No ACK was sent (ACK only after return). | engine.py:`_write` (`before_write`, 207); engine.py:`_scan` | `tests.test_engine.CrashPointTest.test_before_write`; `tests.test_crash_campaign.test_all_write_points_for_put_delete_batch_large_value_and_large_batch`; crashpoints 9001 (`before_write:1`, `before_write:3`) |
-| A2 | Kill after some bytes of the record are written (torn write) → key absent or previous value; torn bytes never returned | `H prev` + the first 1..len-1 bytes of the new frame | `decode_frame` returns `None` when fewer than 12 bytes remain (format.py:112) or the payload is short (format.py:118). `_recover` then runs `ftruncate(stop)` + `fsync`. Values are served only from the index, which never referenced the torn bytes, so they cannot be returned. | format.py:`decode_frame`; engine.py:`_recover` (139-143) | `test_engine.CrashPointTest.test_torn_write`; `test_crash_campaign.test_every_byte_of_final_frame_and_short_header` (every cut point); crashpoints 9001 (`torn_write:1`, `:2`); default 9007 / 7001 / 7002 / 9500 (forced torn_write every 5th round) |
+| A1 | Kill before any bytes of a put reach the file → key absent or previous value | `H prev G` (G = the 1-byte `00` EOF guard); the new frame exists only in process memory | Nothing reached the file, so recovery replays exactly the previous frames. The key keeps its previous value or stays absent. No ACK was sent (ACK only after return). | engine.py:`_write` (`before_write`, 207); engine.py:`_scan` | `tests.test_engine.CrashPointTest.test_before_write`; `tests.test_crash_campaign.test_all_write_points_for_put_delete_batch_large_value_and_large_batch`; crashpoints 9001 (`before_write:1`, `before_write:3`) |
+| A2 | Kill after some bytes of the record are written (torn write) → key absent or previous value; torn bytes never returned | `H prev` + the first 1..len-1 bytes of the new frame, written over the old guard | `decode_frame` returns `None` when fewer than 12 bytes remain (format.py:112) or the payload is short (format.py:118). `_recover` then runs `ftruncate(stop)`, rewrites the guard (`_restore_tail_guard`) and `fsync`s. (A 1-byte prefix equal to `00` is indistinguishable from the guard and is kept as one, which changes nothing.) Values are served only from the index, which never referenced the torn bytes, so they cannot be returned. | format.py:`decode_frame`; engine.py:`_recover` (139-143) | `test_engine.CrashPointTest.test_torn_write`; `test_crash_campaign.test_every_byte_of_final_frame_and_short_header` (every cut point); crashpoints 9001 (`torn_write:1`, `:2`); default 9007 / 7001 / 7002 / 9500 (forced torn_write every 5th round) |
 | A3 | Kill after the record is fully written but before fsync → either outcome (not acknowledged); nothing else corrupted | `H prev F(new)` in the page cache, not fsynced | After SIGKILL the page cache survives, so the frame is complete and CRC-valid and gets replayed. The earlier frames are untouched, because appends never rewrite older bytes. After a power cut the frame could be absent or torn, which leads to A2's path (UNCERTAIN: no power-cut test). | engine.py:`_write` (`after_write`, 213) | `test_engine.CrashPointTest.test_after_write`; campaign write-points test; crashpoints 9001 (`after_write:3`) |
 | A4 | Kill after fsync returns but before put returns success → key present with new value | `H prev F(new)`, durable; index not updated | Recovery rebuilds the index from the log, so the frame is replayed regardless of the lost in-memory index. | engine.py:`_write` (`after_fsync`, 215); `_scan` / `_apply` | `test_engine.CrashPointTest.test_after_fsync`; campaign write-points test; crashpoints 9001 (`after_fsync:3`) |
 | A5 | Kill immediately after put returns success → key present with new value | `H prev F(new)`, durable and indexed | The return happens only after `fsync` (`_commit` 191). The kill just before ACK is `after_return`. After ACK, the oracle requires the key to be present. | serve.py:`run.execute` (`after_return` before `reply("ACK")`); engine.py:`_commit` | `tests.test_torture.test_after_return_crash_keeps_value_without_ack`; crashpoints 9001 (`after_return:1`); default 9007 / 7001 / 7002 / 9500 (every ACKed op checked) |
@@ -63,7 +62,7 @@ flowchart TD
 | B5 | Batch that puts X and deletes X → ordering defined in README and honoured after a crash | One frame whose ops include `PUT X ... DEL X` | README: "ops apply first to last". `_commit` applies ops in order (192-194), and `_scan` applies the decoded ops in frame order, so recovery gives the same result as the live engine. | engine.py:`_commit`, `_scan`, `_apply` | `test_engine.BasicTest.test_batch_put_then_del_leaves_absent` (no crash); `tests.test_torture.test_delete_and_batch_order` (oracle). After a crash: default 9007 / 7001 / 7002 / 9500 batches reuse 32 keys per writer with 20% deletes, and the oracle applies them in order (UNCERTAIN: I did not count how many batches contained put-then-del of the same key). |
 | B6 | 10,000-op batch killed halfway → none visible; recovery still under 2 s | Prefix of a ~10,000-op frame (or the complete frame, if the kill came after the write) | Same as B1. Recovery cost is one `decode_frame` over the frame. | format.py:`decode_frame`; engine.py:`_recover` | campaign write-points test, kind `large-batch` (10,000 ops), `torn_write` at a random prefix; large-batch 9006 (100% of kills with a 2-10,000-op batch in flight). Recovery time for this case was not measured separately. It is bounded by F3 (1.01M keys in 873.6 ms, `tests.bench_f3_kill --seed 31337`). |
 | C1 | Kill during open() while replaying the log → next open succeeds, same correct state | Unchanged. The scan reads through `mmap(ACCESS_READ)` and writes nothing. | The index is in memory only. The next open rescans from offset 16. | engine.py:`_scan` (`recovery_mid_scan`, 149) | `test_engine.CrashPointTest.test_recovery_points`; `test_crash_campaign.test_repeated_crashes_during_recovery`; recovery-crash 9002; crashpoints 9001 (`recovery_mid_scan:3`) |
-| C2 | Kill during open() while truncating/repairing a torn tail → next open succeeds | Before `ftruncate`: `H prev T`. After it: `H prev`, durable. | Truncating to the same `stop` is idempotent. The next open computes the same `stop` and truncates again, or finds nothing left to truncate. | engine.py:`_recover` (`recovery_before_truncate` 140, `recovery_after_truncate` 143) | same tests as C1; recovery-crash 9002 (torn tail made by the real `torn_write` hook); crashpoints 9001 |
+| C2 | Kill during open() while truncating/repairing a torn tail → next open succeeds | Before `ftruncate`: `H prev T`. After the repair: `H prev G`, durable. | Truncating to the same `stop` and rewriting the guard is idempotent. The next open computes the same `stop` and truncates again, or finds nothing left to truncate. | engine.py:`_recover` (`recovery_before_truncate` 140, `recovery_after_truncate` 143) | same tests as C1; recovery-crash 9002 (torn tail made by the real `torn_write` hook); crashpoints 9001 |
 | C3 | Kill during compaction before the new file replaces the old → old file authoritative, all data intact | `<path>` = old file (untouched). `<path>.compact` partial (not fsynced) or complete (fsynced). | `<path>` is never written during the copy. `_open_file` removes `.compact` unread (106). | engine.py:`_copy_live` (`compact_mid_copy`, 313), `_compact_locked` (`compact_before_rename`, 275), `_open_file` | `tests.test_compact.CompactCrashPointTest.test_crash_points`; `test_crash_campaign.test_all_compaction_points_with_multiple_frames`; compaction 9003; crashpoints 9001 |
 | C4 | Kill during compaction in the middle of the rename/swap → exactly one of old/new authoritative, both complete, nothing lost | Just before `os.replace`: the old file at `<path>` plus a complete `.compact`. Just after: the compacted file at `<path>`. | `os.replace` is `rename(2)`, which is atomic within one directory, so there is no in-between state. Both files are complete (the temp was fsynced before the rename). After the rename the directory fsync (282) makes the new name durable. A power cut before that can only bring back the old, complete file (UNCERTAIN: tested only with SIGKILL). | engine.py:`_compact_locked` (275-283) | compaction 9003 (`compact_before_rename`, `compact_after_rename`); `test_compact.CompactCrashPointTest.test_crash_points`; crashpoints 9001 (`compact_after_rename:2`, `:3`) |
 | C5 | Kill after the swap but before temp-file cleanup → data intact; leftovers cleaned up or ignored on next open | Compacted file at `<path>`. After a successful rename there is no temp file, because the rename consumed it. | The code has no separate cleanup step after the swap. A leftover can exist only from a crash before the rename (C3), and `_open_file` deletes `.compact` and `.init` on every open. | engine.py:`_compact_locked` (`compact_after_swap`, 291); `_open_file` (106-107) | compaction 9003 (`compact_after_swap`); crashpoints 9001 (`compact_after_swap:2`, `:3`); `test_compact.CompactCrashPointTest.test_crash_points` asserts no `.compact` after reopen |
@@ -80,16 +79,16 @@ flowchart TD
 | F1 | 500 consecutive random kills and restarts → invariant holds every time | Any of the A/B/D states | All of the above, repeated. 3 kills per database file, so open runs on logs that were already crashed and repaired. | torturelib/runner.py:`iteration` | default 9600 x500 (runner 09e69ec, nothing else running): `SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.064` (log `~/tmp_test/gate2/f1_9600.txt`); default 9500 x500 on the old runner: 500/500 PASS. Since 09e69ec a child that is slow to exit after SIGKILL prints WARN, and one still alive after 60 s is a TOOL ERROR that is never counted as a PASS (see the seeds table for the 9500 attempt that stopped on the old 5 s wait). |
 | F2 | Kill, restart, kill during recovery, restart, kill during recovery again → invariant holds; recovery idempotent | As C1/C2 | Recovery's only write is `ftruncate(stop)` + `fsync`, and repeating it to the same `stop` is idempotent. | engine.py:`_recover`, `_scan` | recovery-crash 9002 (3 consecutive kills per round, for each of the 3 recovery hooks); `test_crash_campaign.test_repeated_crashes_during_recovery` |
 | F3 | 1,000,000 keys written, process killed, open() called → recovery under 2 s, all acknowledged keys present | ~37 MB log of 100+ frames × 10,000 ops (`bench_f3_kill`: 101 ACKed), plus the in-flight batch frame: absent, torn, or complete but un-ACKed | A full scan by `_scan` through `mmap`, then `decode_frame` per frame. | engine.py:`_recover`, `_scan` | `python3 -m tests.bench_f3_kill --seed 31337`: 1,000,000 keys plus 1 extra batch written through `./kvdb serve` (batches of 10,000, ACKs recorded from serve's stdout), SIGKILL 9.1 ms after sending batch `w1-101`; `./kvdb open` → `keys=1010000 recovery_ms=873.601` (wall 964.6 ms incl. interpreter start); `check` OK; keys found 1,010,000, keys ACKed 1,010,000, missing ACKed 0, unexpected 0 → PASS. Earlier in-process kill runs (not via serve): 842 ms and 860 ms, 0 missing. `tests.bench_recovery` (clean close, not a kill): 874.7 ms. |
-| F4 | Database file truncated by 1 byte at the end by hand → open() succeeds; at most the last unacknowledged record lost | `H prev` + the last frame minus 1 byte | The last frame fails format.py:118 and is truncated. Note: that last record **was** acknowledged before the manual truncation. The engine cannot prevent losing it, because the damage happened after the fact. It loses only that one record. | format.py:`decode_frame`; engine.py:`_recover` | `test_engine.TornTailTest.test_truncate_one_byte`; manual via CLI: `./kvdb put` a, b, c → 91 bytes; `truncate -s -1` → `check` says `OK torn-tail=24 bytes (open will truncate)`; `./kvdb open` → keys=2, size 66; `dump` = a, b; `check` = OK; `test_crash_campaign.test_every_byte_of_final_frame_and_short_header` |
+| F4 | Database file truncated by 1 byte at the end by hand → open() succeeds; at most the last unacknowledged record lost | `H prev` with the guard removed: every frame intact | Each acknowledged write ends with the expendable guard byte `00`, written and fsynced together with the frame (`_write`). Removing one byte removes only that guard, so `_scan` replays every frame (nothing is lost, acknowledged or not), and `_recover` rewrites the guard. Only a file whose tail has no guard (a legacy file, or one at a `max_bytes` cap with no spare byte) still loses its last record this way. | engine.py:`_write`, `_recover`, `_restore_tail_guard`; scan.py:`_scan` | `tests.test_tail_guard`; `test_engine.TornTailTest.test_truncate_one_byte`; manual via CLI on the PR #23 merge (2026-11-07): `./kvdb put` a, b, c → 92 bytes; `truncate -s -1` → `check` OK; `./kvdb open` → keys=3, guard restored, size 92; `dump` = a, b, c; `check` OK |
 
-## Part 3 Durability / Atomicity / Recoverability
+If append or sync fails, the engine attempts to restore the previous end and guard, syncs the rollback, poisons the handle and raises an error. If rollback cannot be confirmed, it raises UncertainWriteError and serve reports UNCERTAIN without an ACK. The engine does not automatically retry that failed append.
 
 ### Durability
 An operation is durable before anyone is told it succeeded.
 
 1. `KVDB.put` / `delete` / `batch` all call `KVDB._commit` (lines 168-196).
 2. `_commit` validates and calculates the encoded size without materializing the payload. Under `self._lock`, it rejects poisoned handles and checks the database cap before calling `format.prepare_frame`. Small frames use the existing encoder; large frames use immutable parts and bounded chunks. Line numbers below describe the earlier baseline; see docs/batch_memory_review.md for this follow-up.
-3. Inside the lock, `KVDB._write` calls `os.pwrite` through `_pwrite_all`, which handles a large frame in bounded chunks. `_pwrite_all` loops until every byte is written and raises `OSError` if a call makes no progress.
+3. Inside the lock, `KVDB._write` calls `os.pwrite` through `_pwrite_all`, which handles a large frame in bounded chunks. `_pwrite_all` loops until every byte is written and raises `OSError` if a call makes no progress. It then writes the 1-byte `00` EOF guard right after the frame (the next append overwrites it).
 4. `_write` then calls `os.fsync(self._fd)` (line 214).
 5. Only after `_write` returns does `_commit` update the in-memory index and `self.end` (lines 192-195). Then the lock is released and the method returns.
 6. In `src/serve.py` `run.execute`, `reply("ACK " + op_id)` runs only after `db.put` / `db.delete` / `db.batch` / `db.compact` returned. `reply` uses `print(..., flush=True)`.
@@ -102,7 +101,7 @@ The file's own directory entry is made durable once, when the file is created, b
 - `os.replace(<path>.init, <path>)`;
 - `_fsync_dir` (lines 22-27): `os.open(dir, O_RDONLY|O_DIRECTORY)` + `os.fsync`.
 
-If `pwrite` or `fsync` fails, `_write` calls `os.ftruncate(fd, self.end)` + `os.fsync`, sets `self._poisoned`, and re-raises. If rollback truncation or its synchronization also fails, `UncertainWriteError` retains both errors and the public response is `UNCERTAIN`: the operation may be replayed after reopen. A caller must reconcile that outcome before retrying. An append failure with confirmed rollback remains `IO`. It never retries the failed append `fsync`. Every later write raises `PoisonedError` (line 182), so a write after a failed `fsync` can never be acknowledged.
+If `pwrite` or `fsync` fails, `_write` truncates back to the previous end plus its guard byte, rewrites that guard, calls `os.fsync`, sets `self._poisoned`, and re-raises. If rollback truncation or its synchronization also fails, `UncertainWriteError` retains both errors and the public response is `UNCERTAIN`: the operation may be replayed after reopen. A caller must reconcile that outcome before retrying. An append failure with confirmed rollback remains `IO`. It never retries the failed append `fsync`. Every later write raises `PoisonedError` (line 182), so a write after a failed `fsync` can never be acknowledged.
 
 The limit of this claim: it rests on Linux `fsync(2)` semantics on ext4. It has been tested only with SIGKILL, never with a power cut.  
 
@@ -128,7 +127,7 @@ KVDB.__init__` (lines 68-91) always runs the same sequence, so every crash leave
 2. `_open_file`: `os.remove` of `<path>.compact` and `<path>.init` (leftovers of a crashed compaction or creation). Then, if `<path>` is missing or holds only a prefix of a valid header (`_is_header_prefix`), call `_create` (see Durability above).
 3. `_recover`: `os.fstat` size, `mmap.mmap(ACCESS_READ)`, `format.check_header`.
 4. `_scan`: walk the frames from offset 16 until `decode_frame` returns `None`.
-5. If `stop < size`: `os.ftruncate(fd, stop)` + `os.fsync(fd)`.
+5. If exactly one `00` byte follows the last frame, it is the EOF guard: nothing is truncated. Otherwise, if `stop < size`: `os.ftruncate(fd, stop)`, rewrite the guard, `os.fsync(fd)`. A guardless nonempty file gets its guard added and synced. An empty (16-byte) database has no guard, and a file already at its `max_bytes` cap is not grown.
 6. `end = stop`.
 
 The scan only reads, so a crash at any point during recovery leaves the file as it was, or with the tail already cut and synced. The next open repeats the same steps.

@@ -1,0 +1,5 @@
+B1_exact_three_of_ten PASS
+A5_acknowledged_put PASS
+B4_acknowledged_ten_op_batch PASS
+B5_put_then_delete_after_crash PASS
+D3_long_batch_with_single_put PASS

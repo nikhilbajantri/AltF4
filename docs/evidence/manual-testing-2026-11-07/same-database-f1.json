@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "passed": 500,
+  "iterations": 500,
+  "seed": 84222,
+  "one_database": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/same_database_f1/persistent.db",
+  "seconds": 286.89
+}

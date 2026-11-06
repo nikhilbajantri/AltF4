@@ -1,0 +1,72 @@
+[
+  {
+    "name": "B1_exact_three_of_ten",
+    "status": "PASS",
+    "evidence": {
+      "ops": 10,
+      "completed_op_bytes": 3,
+      "cut": 67,
+      "frame_bytes": 186,
+      "exit": -9,
+      "stdout": "READY keys=1 recovery_ms=0.079\n"
+    }
+  },
+  {
+    "name": "A5_acknowledged_put",
+    "status": "PASS",
+    "evidence": {
+      "exit": -9,
+      "stdout": [
+        "READY keys=0 recovery_ms=4.368",
+        "ACK w1-a"
+      ],
+      "recovered": {
+        "6b6579": "7361766564"
+      }
+    }
+  },
+  {
+    "name": "B4_acknowledged_ten_op_batch",
+    "status": "PASS",
+    "evidence": {
+      "exit": -9,
+      "stdout": [
+        "READY keys=0 recovery_ms=4.079",
+        "ACK w1-ten"
+      ],
+      "recovered": {
+        "6b30": "7361766564",
+        "6b31": "7361766564",
+        "6b32": "7361766564",
+        "6b33": "7361766564",
+        "6b34": "7361766564",
+        "6b35": "7361766564",
+        "6b36": "7361766564",
+        "6b37": "7361766564",
+        "6b38": "7361766564",
+        "6b39": "7361766564"
+      }
+    }
+  },
+  {
+    "name": "B5_put_then_delete_after_crash",
+    "status": "PASS",
+    "evidence": {
+      "exit": -9,
+      "stdout": [
+        "READY keys=0 recovery_ms=4.681",
+        "ACK w1-order"
+      ],
+      "recovered": {}
+    }
+  },
+  {
+    "name": "D3_long_batch_with_single_put",
+    "status": "PASS",
+    "evidence": {
+      "seed": 14,
+      "markers": "LONG_WRITE_ENTERED\nSINGLE_PUT_CALLED_DURING_LONG_WRITE\n",
+      "instrumentation": "test-only scheduling delay; real CLI, unchanged writes/fsync and independent oracle"
+    }
+  }
+]

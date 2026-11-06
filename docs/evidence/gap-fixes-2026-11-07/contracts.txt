@@ -1,0 +1,26 @@
+{
+  "directory": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts",
+  "F4_before_open": "OK\n",
+  "F4_open": "keys=3 recovery_ms=2.526\n",
+  "F4_after_dump": "a\ta\nb\tb\nc\tc\n",
+  "F4_acknowledged_last_key_lost": false,
+  "network_guard_verified": true,
+  "clean_clone_build": {
+    "exit": 0,
+    "stdout": "python3 --version\nPython 3.12.3\npython3 -c \"import sys; sys.exit(0 if sys.version_info >= (3, 10) else \\\"Python 3.10+ required\\\")\"\npython3 -m compileall -q src torturelib\nchmod +x kvdb torture\nBUILD OK\n",
+    "stderr": ""
+  },
+  "offline_guarded_put": "OK\n",
+  "offline_guarded_get": "works\n",
+  "offline_scope": "Python process-level socket guard; Wi-Fi adapter was not switched off; local Git clone, not a network clone",
+  "architecture_ids": {
+    "rows": 32,
+    "unique": 32,
+    "duplicates": [],
+    "not_verified_rows": 0
+  },
+  "non_stdlib_runtime_imports": [],
+  "torture_default_iterations": "500",
+  "prompt_log_has_entries": false
+}
+CLI checks: 19

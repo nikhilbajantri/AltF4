@@ -1,0 +1,80 @@
+{
+  "commit": "f1a1c0cc008dcd764baad749d35d4f1ed0d6822b",
+  "started_utc": "2026-11-06T21:09:22.674105+00:00",
+  "python": "3.12.3",
+  "evidence": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/performance",
+  "f3_runs": [
+    {
+      "seed": 31337,
+      "exit": 0,
+      "output": "seed=31337 extra_batches=1 kill_delay_ms=9.1 serve_exit=-9 write_s=2.8\nin_flight=w1-101 (not ACKed)\nopen: keys=1010000 recovery_ms=527.392 (wall 567.1 ms, includes interpreter start)\nstrict_recovery_under_2000_ms=True\ncheck: OK\nkeys found=1010000 keys ACKed=1010000 missing ACKed=0 unexpected=0\nPASS\n",
+      "engine_recovery_ms": 527.392,
+      "cli_wall_ms": 567.1,
+      "under_two_seconds": true,
+      "wall_under_two_seconds": true
+    },
+    {
+      "seed": 2026110608,
+      "exit": 0,
+      "output": "seed=2026110608 extra_batches=4 kill_delay_ms=8.2 serve_exit=-9 write_s=2.9\nin_flight=w1-104 (not ACKed)\nopen: keys=1040000 recovery_ms=558.539 (wall 598.9 ms, includes interpreter start)\nstrict_recovery_under_2000_ms=True\ncheck: OK\nkeys found=1040000 keys ACKed=1040000 missing ACKed=0 unexpected=0\nPASS\n",
+      "engine_recovery_ms": 558.539,
+      "cli_wall_ms": 598.9,
+      "under_two_seconds": true,
+      "wall_under_two_seconds": true
+    },
+    {
+      "seed": 2026110609,
+      "exit": 0,
+      "output": "seed=2026110609 extra_batches=9 kill_delay_ms=37.1 serve_exit=-9 write_s=3.0\nin_flight=w1-109 (ACKed before kill)\nopen: keys=1100000 recovery_ms=580.478 (wall 624.2 ms, includes interpreter start)\nstrict_recovery_under_2000_ms=True\ncheck: OK\nkeys found=1100000 keys ACKed=1100000 missing ACKed=0 unexpected=0\nPASS\n",
+      "engine_recovery_ms": 580.478,
+      "cli_wall_ms": 624.2,
+      "under_two_seconds": true,
+      "wall_under_two_seconds": true
+    }
+  ],
+  "separate_frame_runs": [
+    {
+      "repetition": 1,
+      "engine_recovery_ms": 1562.375236000662,
+      "api_wall_ms": 1562.3884169999656,
+      "keys": 1000000,
+      "under_two_seconds": true,
+      "all_million_values_verified": true
+    },
+    {
+      "repetition": 2,
+      "engine_recovery_ms": 1558.6895180003921,
+      "api_wall_ms": 1581.1306729992793,
+      "keys": 1000000,
+      "under_two_seconds": true
+    },
+    {
+      "repetition": 3,
+      "engine_recovery_ms": 1646.3824549991841,
+      "api_wall_ms": 1670.9272019998025,
+      "keys": 1000000,
+      "under_two_seconds": true
+    }
+  ],
+  "separate_frame_fixture": {
+    "frames": 1000000,
+    "keys": 1000000,
+    "file_bytes": 41000016,
+    "construction_seconds": 1.249,
+    "kind": "format-generated diagnostic; not an ACK/kill test"
+  },
+  "B6": {
+    "batch_ops": 10000,
+    "serve_exit": -9,
+    "output": "READY keys=1 recovery_ms=0.091\n",
+    "engine_recovery_ms": 2.788042000247515,
+    "api_wall_ms": 2.7980300001217984,
+    "under_two_seconds": true,
+    "partial_batch_visible": false
+  },
+  "million_delete_compaction": {
+    "exit": 0,
+    "output": "puts:    keys=1000000 file_bytes=37001617 write_s=1.87 recovery_ms=540.7\ncompact: delete_s=1.53 size_before=54003217 size_after=16 compact_ms=8.8\n"
+  },
+  "ended_utc": "2026-11-06T21:10:02.839320+00:00"
+}

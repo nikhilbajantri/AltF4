@@ -1,0 +1,16 @@
+{
+  "started_utc": "2026-11-06T20:18:08.145820+00:00",
+  "commit": "d9d3c2811c01d3da66cd6723cfb8d545ecd676be",
+  "python": "3.12.3",
+  "directory": "/home/arsht/tmp_test/demo-evidence-6ee339u0",
+  "qualified_source_hash_rule": "CRLF normalized to LF",
+  "qualified_source_hashes_match": true,
+  "filesystem": "ext4",
+  "torture_summary": "SUMMARY PASS=25/25 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.007 kills_awaiting_response=88.0% ACKs={'w1': 129, 'w2': 116} mix={'batch': 107, 'ERR': 8, 'shared': 22, 'max_batch': 10000, 'put': 135, 'del': 42} worlds={0: 25}",
+  "server_pid": 107389,
+  "server_exit": -9,
+  "ready": "READY keys=0 recovery_ms=15.051",
+  "torn_write_exit": -9,
+  "torn_before_open": "OK torn-tail=9 bytes (open will truncate)",
+  "ended_utc": "2026-11-06T20:18:37.709922+00:00"
+}

@@ -1,0 +1,6 @@
+python3 --version
+Python 3.12.3
+python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else \"Python 3.10+ required\")"
+python3 -m compileall -q src torturelib
+chmod +x kvdb torture
+BUILD OK

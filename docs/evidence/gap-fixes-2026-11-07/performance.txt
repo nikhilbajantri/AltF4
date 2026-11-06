@@ -1,0 +1,13 @@
+Evidence directory: /home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/performance
+F3 31337 engine_ms= 576.419 CLI_wall_ms= 624.6 strict_pass= True
+F3 2026110608 engine_ms= 590.413 CLI_wall_ms= 641.1 strict_pass= True
+F3 2026110609 engine_ms= 614.015 CLI_wall_ms= 664.8 strict_pass= True
+Prepared exactly 1,000,000 one-op frames.
+One-million-frame replay 1 engine_ms= 1501.031 strict_pass= True
+One-million-frame replay 2 engine_ms= 1514.751 strict_pass= True
+One-million-frame replay 3 engine_ms= 1516.947 strict_pass= True
+B6 recovery_ms= 4.371310999886191
+puts:    keys=1000000 file_bytes=37001617 write_s=1.84 recovery_ms=590.9
+compact: delete_s=1.48 size_before=54003217 size_after=16 compact_ms=8.9
+
+AUDIT_RESULTS=/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/performance/results.json

@@ -213,10 +213,10 @@ def quarantine(path):
             name.rename(name.with_name(name.name + ".tool-error"))
 
 
-def main(argv=None):
+def argument_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=12345)
-    parser.add_argument("--iterations", type=int, default=25)
+    parser.add_argument("--iterations", type=int, default=500)
     parser.add_argument("--mode", choices=["default", "large-values", "large-batch", "recovery-crash", "compaction", "disk-full", "crashpoints"], default="default")
     parser.add_argument("--data-dir", type=Path, default=Path.home() / "tmp_test" / "torture_data")
     parser.add_argument("--compress-log", action="store_true", help="store the complete transcript as oracle.log.gz")
@@ -224,6 +224,11 @@ def main(argv=None):
                         help="also check the physical host volume, e.g. /mnt/d for a WSL disk on D:")
     parser.add_argument("--min-free-gib", type=float, default=2,
                         help="stop before a round if a checked volume has less free space")
+    return parser
+
+
+def main(argv=None):
+    parser = argument_parser()
     args = parser.parse_args(argv)
     if not sys.platform.startswith("linux"):
         parser.error("run this tool in Ubuntu/WSL, using the real engine")

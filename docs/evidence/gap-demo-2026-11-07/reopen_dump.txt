@@ -1,0 +1,3 @@
+city	Delhi
+color	blue
+status	ready

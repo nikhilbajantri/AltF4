@@ -1,0 +1,40 @@
+flowchart TD
+  SERVE["serve stdin requests"] --> WORKERS["One worker/queue per writer; FIFO within each writer"]
+  WORKERS --> API
+  API["Client API / CLI / stdin serve: put, delete, batch, get"] --> V["1. Validate operations; calculate full frame length"]
+  V --> L["2. Acquire one per-handle mutex; reject poisoned handle"]
+  L --> CAP["3. Disk-full guard: logical end + frame + 1-byte tail guard<br/>must fit max_bytes minus delete reserve; compact/retry once"]
+  CAP --> ENC["4. Prepare CRC frame; large encodings use bounded 4 MiB chunks"]
+  ENC --> W["5. os.pwrite full frame at logical end<br/>overwrites old guard; loop on short writes"]
+  W --> G["6. os.pwrite one 00 guard byte after frame"]
+  G --> FS["7. os.fsync data file"]
+  FS --> IX["8. Publish whole batch to RAM index; advance logical end<br/>optional crash-safe auto-compaction while mutex held"]
+  IX --> ACK["9. Release mutex; return success; serve prints/flushed ACK"]
+  API --> GET["get: same mutex; RAM index lookup; os.pread value"]
+  GET --> RAM["RAM only: key -> value offset / length; index not persisted"]
+  IX --> RAM
+  W --> DISK["One authoritative file, little endian<br/>HEADER 16: magic 8 + version u32 4 + header CRC32 4<br/>FRAME: payload length u64 8 + CRC32 4 + payload<br/>payload: nops u32 4; OP: type u8 1 + klen u16 2 + vlen u32 4 + key + value<br/>CRC32 covers 8 length bytes and all payload bytes<br/>Complete valid frame is commit unit; no trailing commit marker<br/>Optional EOF guard: 00, 1 byte outside CRC; empty file is header only"]
+  OPEN["open(path)"] --> FLOCK["flock LOCK_EX / LOCK_NB on path.lock<br/>one process handle; concurrent threads share it"]
+  FLOCK --> CLEAN["Remove stale .init/.compact; create header if missing<br/>fsync temp -> os.replace -> fsync parent directory"]
+  CLEAN --> HDR["mmap and validate header"]
+  HDR --> SCAN["Scan complete CRC-valid frames; replay into RAM index"]
+  SCAN -->|"next valid frame"| SCAN
+  SCAN -->|"incomplete/bad-CRC tail"| REPAIR["ftruncate valid prefix; restore guard if nonempty and cap allows; fsync"]
+  SCAN -->|"complete EOF, guard missing"| RESTORE["Restore guard and fsync if nonempty and cap allows<br/>legacy capped files remain readable without growth"]
+  SCAN -->|"clean EOF / guard present"| READY["Ready; logical end excludes guard"]
+  SCAN -->|"CRC-valid malformed payload"| ERROR["CorruptError; do not truncate"]
+  REPAIR --> READY
+  RESTORE --> READY
+  READY --> API
+  COMPACT["compact: hold same mutex"] --> COPY["Copy live values to path.compact; rebuild new RAM index<br/>cap includes final guard; frames <=4 MiB and <=10,000 ops"]
+  COPY --> TMP["Append guard if nonempty; fsync temp; close"]
+  TMP --> RENAME["os.replace temporary file over authoritative file"]
+  RENAME --> DIR["fsync parent directory; reopen new file"]
+  DIR --> SWAP["Swap descriptor / index / logical end before next write"]
+  SWAP --> DISK
+  CAP -->|"dead bytes available"| COMPACT
+  CAP -->|"cannot fit after reclaim"| FULL["DISKFULL; rejected mutation is not appended"]
+  W -->|"I/O error"| ROLLBACK["Restore previous end + guard; fsync rollback; poison handle"]
+  G -->|"I/O error"| ROLLBACK
+  FS -->|"I/O error"| ROLLBACK
+  ROLLBACK -->|"rollback also fails"| UNCERTAIN["UNCERTAIN; reopen and reconcile; no ACK"]

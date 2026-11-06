@@ -1,5 +1,6 @@
 """Capture real demo evidence without modifying the database implementation."""
 from datetime import datetime, timezone
+import argparse
 import hashlib
 import json
 import os
@@ -24,9 +25,15 @@ env.pop('KVDB_CRASH',None)
 metadata={'started_utc':datetime.now(timezone.utc).isoformat(),
           'commit':subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip(),
           'python':sys.version.split()[0],'directory':str(directory)}
-prior=json.loads((repo/'docs/final_gate_rerun_manifest.json').read_text())
-metadata['qualified_source_hashes_match']=all(hashlib.sha256((repo/name).read_bytes()).hexdigest()==digest
-    for name,digest in prior['sources'].items())
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--qualification-manifest',type=Path,default=repo/'docs/gap_fixes_gate_manifest.json')
+args=parser.parse_args()
+prior=json.loads(args.qualification_manifest.read_text())
+assert prior.get('success'), 'Qualification did not pass'
+qualified=prior.get('canonical_sources',prior['sources'])
+metadata['qualified_source_hash_rule']='CRLF normalized to LF' if 'canonical_sources' in prior else 'raw bytes'
+metadata['qualified_source_hashes_match']=all(hashlib.sha256((repo/name).read_bytes().replace(b'\r\n',b'\n') if 'canonical_sources' in prior else (repo/name).read_bytes()).hexdigest()==digest
+    for name,digest in qualified.items())
 assert metadata['qualified_source_hashes_match'], 'Source differs from the qualified implementation'
 metadata['filesystem']=subprocess.check_output(['findmnt','-n','-o','FSTYPE','-T',str(directory)],text=True).strip()
 assert metadata['filesystem']=='ext4'

@@ -141,12 +141,12 @@ class TornTailTest(EngineTestCase):
         db = KVDB(self.path)
         db.put(b"a", b"1")
         db.put(b"b", b"2")
-        good_end = db.stats["file_bytes"]
         db.put(b"c", b"3")
+        good_end = db.stats["file_bytes"]
         db.close()
         os.truncate(self.path, self.size() - 1)
         db = KVDB(self.path)
-        self.assertEqual((db.get(b"a"), db.get(b"b"), db.get(b"c")), (b"1", b"2", None))
+        self.assertEqual((db.get(b"a"), db.get(b"b"), db.get(b"c")), (b"1", b"2", b"3"))
         self.assertEqual(self.size(), good_end)
         db.close()
 
@@ -169,7 +169,9 @@ class TornTailTest(EngineTestCase):
         payload = fmt.NOPS.pack(1) + fmt.OP_HDR.pack(9, 1, 0) + b"k"
         len_bytes = fmt.LEN.pack(len(payload))
         crc = zlib.crc32(payload, zlib.crc32(len_bytes))
-        with open(self.path, "ab") as f:
+        with open(self.path, "r+b") as f:
+            f.seek(-1, os.SEEK_END)  # Raw fixture replaces the trailing guard.
+            f.truncate()
             f.write(len_bytes + struct.pack("<I", crc) + payload)
         before = self.size()
         with self.assertRaises(CorruptError):
@@ -190,7 +192,7 @@ class DiskFullTest(EngineTestCase):
         self.assertIsNone(db.get(b"k"))
         # 904 + 16 + 10*9 > 1000, but k is dead: E5 compacts to 16 bytes and retries
         db.batch([("del", b"x%d" % i) for i in range(10)])
-        self.assertEqual(self.size(), 16 + 12 + 4 + 10 * 9)
+        self.assertEqual(self.size(), 16 + 12 + 4 + 10 * 9 + 1)
         db.close()
 
 

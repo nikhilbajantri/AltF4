@@ -1,135 +1,92 @@
 # Kill It and Prove It
 
-A crash-safe key-value database in Python. Owner of this file: Varsha.
+Crash-safe embedded key-value storage in Python. Linux/ext4; Python 3.10+ standard library. Install Python, make and Git before an offline rehearsal. Run the real engine in Linux/WSL; --fake is only a practice stub.
 
-## Build
-make build
+## Build and test
 
-## Platform
-Linux, ext4. Tested on Arch Linux and WSL2 Ubuntu (repo under ~/). Python 3.10+ standard library only.
+From the repository root: `make build`. Run regression tests with `make test`. Keep database/test files on real Linux storage, for example ~/tmp_test, not a RAM disk. See [the latest gap-fix report](docs/GAP_FIX_REPORT.md) and [offline plan](OFFLINE_TEST_PLAN.md) for measured results and remaining human checks.
 
-## On-disk format (all integers little-endian, append-only)
-HEADER 16 bytes: magic "KVDB0001" (8) | version u32 = 1 (4) | hcrc u32 (4) = crc32 of first 12 bytes
-FRAME: len u64 (8) | crc u32 (4) | payload (len bytes); crc = crc32(len bytes + payload); frame header = 12 bytes
-PAYLOAD: nops u32 (4) | OP...
-OP: type u8 (1=PUT, 2=DEL) | klen u16 | vlen u32 | key | value (DEL: vlen=0, no value bytes); op header = 7 bytes
-The frame is the commit: a frame counts only if all its bytes are present and its CRC matches. A single put is a frame with nops=1.
-Limits: key 1..1024 bytes, value 0..1,048,576 bytes, batch 1..10,000 ops.
-Batch order: ops apply first to last (put X then del X leaves X absent).
+## Hands-on testing
 
-## Write order (put, delete, batch)
-1 validate and calculate frame size  2 take global lock  3 refuse if poisoned  4 check max_bytes before allocating the encoded frame (compact/retry if dead space exists)  5 prepare frame and CRC  6 os.pwrite at end, in bounded chunks for large frames (loop until complete)  7 os.fsync(fd)  8 update index, end += frame size  9 release lock, return; serve prints ACK <id> and flushes.
-On error in 6 or 7: ftruncate(fd, end), fsync, mark poisoned, re-raise. If rollback truncation or its fsync also fails, raise UncertainWriteError: the operation may be present after reopen. Never retry the failed append fsync.
-Delete reserve = min(65536, max_bytes // 10).
+See [Arsh's measured manual rehearsal report](MANUAL_TEST_REPORT.md) for actual results and timing limits, and the [complete two-terminal command guide](docs/MANUAL_TEST_COMMANDS.md) for setup, commands, expected outputs and explanations.
 
-## Recovery (open)
-1 flock <path>.lock  2 delete <path>.compact and <path>.init if present  3 if <path> missing: write header to <path>.init, fsync, os.replace to <path>, fsync directory  4 mmap, validate header  5 scan frames from offset 16; stop if <12 bytes left, or pos+12+len > size, or CRC mismatch; else apply ops  6 if stop < size: ftruncate(stop), fsync  7 end = stop, READY.
+## On-disk format (one-page specification)
 
-## Compaction
-Hold the lock. Write live keys as PUT frames (<= 4 MB each) to <path>.compact, fsync, close, os.replace to <path>, fsync directory, reopen and swap fd/index/end. Triggers: compact command; DISKFULL with dead bytes (then retry once); dead bytes > 50% of a file > 4 MB.
+All integers are unsigned little endian. One authoritative append-only data file; the index is RAM-only. Lock and temporary files are auxiliary.
 
-## Engine API (src/engine.py)
-KVDB(path, max_bytes=None); put(key: bytes, value: bytes); get(key) -> bytes | None; delete(key); batch([("put", k, v) | ("del", k)]); compact(); keys(); items(); close(); stats -> {keys, file_bytes, dead_bytes, recovery_ms}. Errors: DiskFull, PoisonedError, LockedError, ValueError, OSError, UncertainWriteError (an OSError subclass).
+```text
+FILE = HEADER | FRAME ... FRAME | optional EOF GUARD
+HEADER (16): magic "KVDB0001" (8) | version=1 u32 (4) | hcrc u32 (4)
+             hcrc = CRC32(first 12 header bytes)
+FRAME: payload_length u64 (8) | crc u32 (4) | PAYLOAD (payload_length)
+       crc = CRC32(the 8 length bytes followed by all payload bytes)
+PAYLOAD: operation_count u32 (4) | OP ... OP
+OP: type u8 (1) | key_length u16 (2) | value_length u32 (4) | key | value
+    type=1 PUT; type=2 DELETE (value_length=0, no value bytes)
+GUARD: 00 (1), only at EOF after complete frames; outside frame/CRC
+```
 
-## CLI
-./kvdb open <path> [--max-bytes N]   -> keys=<n> recovery_ms=<ms>
-./kvdb put <path> <key> <value>      -> OK | ERR <reason> (exit 1)
-./kvdb get <path> <key>              -> value | NOTFOUND
-./kvdb del <path> <key>              -> OK
-./kvdb batch <path> <file>           -> OK | ERR <reason>   (file lines: "put k v" or "del k")
-./kvdb dump <path>                   -> key<TAB>value per line, sorted by key
-./kvdb check <path>                  -> OK | CORRUPT <reason>
-./kvdb serve <path> [--max-bytes N]  -> serve protocol
-./kvdb inspect <path>                -> every frame: offset, len, crc OK/BAD, ops
-./kvdb compact <path>                -> size before/after
+Keys: 1..1,024 bytes; values: 0..1,048,576 bytes; batch: 1..10,000 operations. A complete valid frame is the commit unit, with no separate trailing commit marker. Batch operations apply first to last; put X then delete X leaves X absent. A parser validates the header, then each declared frame length, CRC and payload. It accepts an optional single 00 byte after the last full frame. Empty databases are just the 16-byte header. A missing guard does not invalidate a full frame. Other incomplete tails are discarded on open; CRC-valid malformed payloads raise CorruptError without truncation.
 
-## Serve protocol (one line in, one line out, flushed)
-startup: READY keys=<n> recovery_ms=<ms>
-put <id> <key> <value>  -> ACK <id> | ERR <id> <reason>
-del <id> <key>          -> ACK <id> | ERR <id> <reason>
-get <id> <key>          -> VAL <id> <value> | NOTFOUND <id>
-batch <id> / op lines "put k v" or "del k" / end  -> ACK <id> | ERR <id> <reason>
-compact <id>            -> ACK <id> | ERR <id> <reason>
+The guard costs one byte per nonempty file and is overwritten by the next frame. It protects a successful current write from literal one-byte tail removal. Legacy version-1 logs remain readable; open adds the guard if space allows. A legacy log already at/over a new cap stays readable without growth; make room and use the current writer/compactor before relying on tail protection. Older engines may remove the guard. [Current architecture and write/recovery diagram](ARCHITECTURE.md).
+
+## Write, recovery and compaction
+
+Validate/calculate size; acquire the engine mutex; reject poisoned handles; check full frame plus guard against max_bytes before allocating encoded data. Reclaim dead data and retry once if needed. Prepare CRC encoding (large encodings use bounded 4 MiB chunks). Loop on os.pwrite at the logical end, replacing the old guard; append the new guard; os.fsync; publish the whole batch/index/end; finish any automatic compaction; release lock and return. serve prints ACK only afterward.
+
+On write/fsync error, truncate the attempted append, restore the guard, sync rollback and poison the handle. UNCERTAIN means rollback could not be confirmed: the operation can be present or absent on reopen. Reconcile application state before retrying.
+
+Open locks path.lock with flock, removes stale .init/.compact files and creates a synced header through temp-file replacement if missing. It validates the header and replays complete checked frames to rebuild the index. It truncates an incomplete tail, restores the guard when space allows and syncs before readiness. A crash during scan/repair can be retried. get/items and writes share one mutex; separate get calls are not a multi-key snapshot.
+
+Compaction holds that mutex, copies live keys into <=4 MiB/<=10,000-op frames in path.compact, checks the cap including the final guard, appends the guard if nonempty, fsyncs/closes, os.replace's the authoritative file, fsyncs the directory, then reopens/swaps descriptor/index/end. Empty compaction leaves 16 bytes. Triggers: explicit compact; cap retry with dead data; >50% dead bytes in a >4 MiB file.
+
+## API
+
+`KVDB(path, max_bytes=None, auto_compact=True)` exposes put(bytes, bytes), get(bytes) -> bytes/None, delete(bytes), batch([("put", key, value), ("del", key)]), close(), compact(), keys(), items(), stats. Success is durable under honest fsync and abrupt process death. stats reports physical file_bytes including the guard; internal end excludes it. Delete reserve: min(65,536, max_bytes // 10). New writes must fit frame + guard + applicable reserve.
+
+## CLI (run from repository root)
+
+```bash
+./kvdb open PATH [--max-bytes N]  # create/recover; keys and recovery_ms
+./kvdb put PATH KEY VALUE         # OK, or ERR reason (exit 1)
+./kvdb get PATH KEY               # value, or NOTFOUND
+./kvdb del PATH KEY               # missing key is allowed
+./kvdb batch PATH OPERATIONS_FILE # lines: put key value / del key
+./kvdb dump PATH                  # every key/value, sorted by key
+./kvdb check PATH                 # read-only integrity/tail diagnostic
+./kvdb serve PATH [--max-bytes N]  # stdin commands; durable ACKs
+./kvdb inspect PATH               # extra: read-only frame layout
+./kvdb compact PATH               # extra: physical before/after bytes
+```
+
+Use hex:HEX_BYTES for binary, empty or whitespace-containing tokens; get/dump apply the same encoding when necessary. Batch-file put values retain spaces. get/del/dump/check/inspect/compact on a missing database fail without creating it. open/put/batch/serve may create it. check/inspect never lock or repair a live file and do not promise a consistent snapshot during concurrent mutation.
+
+## Serve protocol
+
+```text
+READY keys=N recovery_ms=M
+put w1-1 key value       -> ACK w1-1
+get w1-2 key             -> VAL w1-2 value / NOTFOUND w1-2
+del w1-3 key             -> ACK w1-3
+batch w1-4
+put city Delhi
+del old
+end                     -> ACK w1-4
+compact w1-5             -> ACK w1-5
 quit
-id prefix before "-" names the writer (w1-17); each writer prefix gets its own worker thread. "hex:" prefix = hex-encoded bytes. ERR reasons: DISKFULL, INVALID, POISONED, IO, UNCERTAIN, UNSUPPORTED, INTERNAL, BUSY. IO reports an operating-system error. For append failures with confirmed rollback the operation is absent. UNCERTAIN reports an append failure whose rollback could not be confirmed: the operation may be present or absent after reopening. It is neither an ACK nor a guaranteed rejection. Reopen and reconcile the application state before retrying; do not assume an automatic retry is safe. POISONED rejects later writes and compaction on that handle. The Python UncertainWriteError retains write_error and rollback_error for diagnosis. BUSY rejects a request whose writer queue is full without blocking other writers. UNSUPPORTED and INTERNAL report unavailable operations and unexpected failures. Startup may report LOCKED, CORRUPT, IO, or INVALID without an operation id. ACK is printed only after the engine call returned (after fsync).
+```
 
-## Torture
-./torture --iterations 500 --seed 12345 [--mode default|large-values|large-batch|recovery-crash|compaction|disk-full|crashpoints]
+The prefix before '-' names a writer. Each has its own worker/queue; responses are FIFO within a writer and may interleave between writers. Up to 64 workers and 64 queued requests per worker; BUSY rejects a saturated queue. Errors: INVALID, DISKFULL, POISONED, IO, UNCERTAIN, UNSUPPORTED, INTERNAL, BUSY; startup can report LOCKED/CORRUPT/IO/INVALID without an ID. Error responses are not ACKs. EOF/quit drains workers before close.
 
-## Implementation notes
-These add to the contracts above; none of them changes one.
+## Torture and qualification
 
-- `KVDB(path, max_bytes=None, auto_compact=True)`: `auto_compact=False` turns off the "dead bytes > 50% of a file > 4 MB" trigger. Compaction on DISKFULL and the compact command always work.
-- Compaction frames: each PUT frame holds at most 4 MiB of payload and at most 10,000 ops (the batch limit).
-- CRC-valid but malformed frame (bad nops, unknown op type, bad klen/vlen, DEL with vlen != 0, payload not matching its length): this is not a torn write, so `open` raises CorruptError and truncates nothing. `check` reports `CORRUPT offset=<n> <reason>`. Only an incomplete frame or a CRC mismatch counts as a torn tail and is truncated.
-- `check` and `inspect` use the read-only scanner in `src/scan.py`. It takes no lock, never truncates and never creates files. `check` also reports CORRUPT if a CRC-valid frame is reachable at a subsequent declared outer-frame boundary (bounded to 1 MiB of subsequent boundary traversal). It never treats records embedded in value bytes as later database records. Damaged length fields can hide later records; this diagnostic is not arbitrary media-corruption detection. See docs/scanner_fix_report.md.
-- CLI tokens: keys and values use the serve `hex:` rule in both directions. `get` and `dump` print a value as `hex:<bytes>` when it is empty, not UTF-8, or contains whitespace (so every `dump` line stays `key<TAB>value`). In a `batch` file, everything after `put <key> ` is the value, spaces included; blank lines are skipped.
-- `get`, `del`, `dump`, `check`, `inspect` and `compact` on a missing database print `ERR not found` (exit 1) and create nothing; `open`, `put`, `batch` and `serve` create the database.
-- Tests and benchmarks run in `$KVDB_TEST_DIR` or `~/tmp_test` (a real disk, never tmpfs `/tmp`).
+```bash
+./torture --iterations 500 --seed 12345 --mode default
+./torture --iterations 100 --seed 7 --mode compaction
+./torture --iterations 100 --seed 42 --mode recovery-crash
+python3 -B -m tests.bench_f3_kill --seed 31337
+```
 
-## Measured (ext4 on NVMe, Arch Linux, Python 3.14)
-| What | Result |
-|---|---|
-| Recovery (`open`), 1,000,000 keys, ~20-byte values, 37 MB file | ~800 ms |
-| Write 1,000,000 keys as 100 batches of 10,000 | ~1.4 s |
-| `compact()`, 1M live keys + 1M overwrites (74 MB -> 37 MB) | ~2.5 s |
-| `compact()`, 100,000 live keys x 1 KB values (104 MB, no dead bytes) | ~0.4 s |
-| `compact()`, 1M keys all deleted (54 MB -> 16 bytes) | ~8 ms |
+Default: 500 rounds. Modes: default, large-values, large-batch, recovery-crash, compaction, disk-full, crashpoints. The tool owns the independent sent/ACK log, kills with SIGKILL, then open/check/dump and whole-history checks. Seeded plans/delays do not reproduce OS scheduling exactly. It stops on invariant failure; tool errors never count as PASS. WSL runs should add `--host-storage-dir /mnt/d --min-free-gib 20` for the Windows volume hosting the VHD; check the system drive too. See [full offline preparation](OFFLINE_TEST_PLAN.md).
 
-Reproduce: `python3 -m tests.bench_recovery` and `python3 -m tests.bench_compact`.
-
-## Team
-Nikhil: engine, format, crash points. Arsh: serve + torture. Srushti: CLI, inspect, Makefile. Varsha: docs, proof table, tests.
-
-## Layout note
-The torture harness package lives in `torturelib/` (runner.py, oracle.py, workload.py) because `./torture` is the executable entry point and a file and directory cannot share that name.
-
-## Serve and torture usage
-
-Run in WSL/Linux from the repository root:
-
-    make build
-    ./kvdb serve ~/tmp_test/practice.db
-    ./torture --iterations 100 --seed 12345 --mode default
-
-Serve uses one worker per operation-ID prefix. Accepted commands retain per-writer order; responses from different writers may interleave. Each queue has 64 pending slots and at most 64 prefixes are supported. A full queue returns BUSY immediately (which may precede earlier queued responses). Stop-and-wait clients avoid queue overflow. Invalid UTF-8 is rejected per physical line; invalid batches are consumed through end and never partly submitted. EOF/quit finish accepted queued operations before close. ACK follows engine return; after_return kills just before ACK.
-
-| Mode | Actual coverage |
-|---|---|
-| default | Two writers, private and shared keys, puts/deletes/batches through 10,000 operations, half of single and small-batch values 64-256 KiB, invalid requests, 2 ms to 1 s log-uniform kill delays; three crashes per database |
-| large-values | Two writers, a maximum-size 1 MiB value at the start of each stream, followed by 128 KiB values |
-| large-batch | Two writers, 10,000 operations at the start of each stream, followed by random 2..10,000-operation batches |
-| recovery-crash | Three consecutive kills during replay or tail repair; torn tails produced by the real torn_write hook |
-| compaction | Cycles four compaction crash hooks; every fifth round uses multiple output frames |
-| disk-full | Rejected puts and whole batches, successful reserve deletes, close crash, reclaiming space and writing again |
-| crashpoints | Cycles all 14 hooks; use at least 14 iterations for complete hook coverage |
-
-Writers per mode: default, large-values and large-batch run two concurrent stop-and-wait writers (w1, w2). compaction, recovery-crash and crashpoints intentionally use one writer at a time: each round must crash at an exact named hook on an exact hit (for example the third compaction, or the scan after a torn_write), and a second concurrent writer would make that hit count depend on thread scheduling. A write racing a compaction would also just wait on the engine lock, so it adds timing noise but no new disk state. Their fixture session (w1-base) finishes before the target session (w2-target) starts. disk-full currently also uses one writer (every op id is w1-*): its point is the exact order of rejected puts, the rejected batch and the reserve deletes, which a second writer would make depend on scheduling.
-
-The first three modes use random wall-clock delays and two stop-and-wait writers. Targeted modes use deterministic crash locations and report zero random delay; recovery/close crashes need not have a request awaiting a response. Default also forces a torn_write every fifth round, starting at round one, so omitted recovery truncation is observable even when random kills leave complete frames.
-
-The runner launches the public kvdb CLI and obtains actual state only through open, check, and dump. The oracle/workload/runner import no storage implementation. crash_probe remains only a compatibility wrapper over these same public commands. Expectation comes from recorded requests and replies, not the database dump.
-
-Private-key states must match a permitted world exactly. Shared and private mutations, including overlapping multi-key batches, are checked against whole-operation orderings respecting writer FIFO and observed SENT/response precedence. The exact search uses memoization and finalized-key pruning; a 250,000-state budget produces TOOL ERROR with no verdict if exceeded. See docs/shared_batch_fix.md for before/after evidence. INVALID, DISKFULL, and BUSY operations must leave no changes. Unexpected IO, UNCERTAIN, POISONED, INTERNAL or UNSUPPORTED responses fail the run.
-
-Seeds reproduce planned operations and kill delays, not OS scheduling or the number of ACKs. Intentional idle gaps let the report distinguish kills with and without requests awaiting responses. That metric does not prove a write was executing at kill time. Logs and databases remain under the unique evidence directory printed at startup (default ~/tmp_test/torture_data). Failures stop with exit 1 and concise key/op-ID differences; failure.txt retains full details. A TOOL ERROR (harness or OS trouble, not an engine verdict) is printed with its evidence and never counted as a PASS; that database is renamed to `*.tool-error` and the run continues on a fresh one, then exits 2. After SIGKILL the runner waits up to 60 s for the child to exit (a child inside fsync exits only when the kernel finishes that I/O) and prints WARN if that took more than 5 s; post-kill open, check and dump each get 120 s. The summary reads `PASS=n/N TOOL_ERROR=t FAIL=f max_exit_wait_s=s`.
-
-## Verification records
-
-See [docs/review_fixes.md](docs/review_fixes.md) for the current issue-resolution checks. [CRASH_TEST_REPORT.md](CRASH_TEST_REPORT.md) records the earlier campaign against its stated source hashes; it is historical, not a claim about later commits. The targeted suite runs with `python3 -B -m unittest tests.test_crash_campaign -v`.
-
-These are process-crash and injected-I/O checks. The two-seed, 500-round-per-mode gate passed (7,000 rounds); see FINAL_GATE_RERUN_REPORT.md. Physical power-loss testing and arbitrary media corruption remain separate work. Keep benchmark/test databases on Linux ext4; the currently open Windows source checkout is not itself an ext4 checkout.
-
-## Final qualification
-
-See [FINAL_TEST_REPORT.md](FINAL_TEST_REPORT.md) for the complete test history, before/after shared-batch evidence, the 7,000-round gate, and limitations. From the repository root, `python3 tools/run_final_gate.py --host-storage-dir /mnt/d --host-storage-dir /mnt/c` repeats the gate on this WSL setup with compressed evidence and a 20 GiB reserve. Use the actual Windows volume holding your WSL disk.
-
-## Large-batch memory
-
-The engine checks the encoded size against the database cap before encoding. Frames above 4 MiB retain immutable input parts, calculate the original CRC incrementally, and write chunks of at most 4 MiB, followed by one final fsync. The on-disk format and atomic batch semantics are unchanged. API iterators and CLI batch files stop collecting after the 10,001st operation instead of exhausting an unbounded input. The limit remains 10,000 operations, 1 MiB per value.
-
-Measured additional encoding memory for a 40 MiB batch fell from about 80.1 MiB to 8.1 MiB; rejected batches avoid that allocation. Caller-owned input values are excluded from these measurements. Serve still retains decoded batch input and queued requests, and mutable API inputs need snapshots; this is not a total RAM quota. See [docs/batch_memory_review.md](docs/batch_memory_review.md) for measurements, tests and remaining limits.
-
-## Qualification after final fixes
-
-All 143 automated tests and the fresh two-seed 7,000-round campaign passed on commit 1be1267. There were zero failed rounds and zero tool errors. Independent transcript auditing verified 11,342 SIGKILL exits and 4,892 submitted shared batches, with all 14 named crash points covered per seed. See [FINAL_GATE_RERUN_REPORT.md](FINAL_GATE_RERUN_REPORT.md) and [the audited manifest](docs/final_gate_rerun_manifest.json). Earlier reports retain their original version-specific results.
+The maintained F3 benchmark now fails if reported recovery is >=2,000 ms or unavailable. Physical power loss, arbitrary bit rot, networking, sharding and MVCC are outside the required crash model. TTL is a proposed demo design only. Input retention and very long logs remain real limits; no claim covers the roughly 10 GiB combination of 10,000 distinct maximum-sized values.

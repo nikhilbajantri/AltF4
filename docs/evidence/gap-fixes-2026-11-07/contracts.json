@@ -1,0 +1,212 @@
+{
+  "directory": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts",
+  "cli": [
+    {
+      "args": [
+        "open",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db"
+      ],
+      "exit": 0,
+      "stdout": "keys=0 recovery_ms=3.826\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "put",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db",
+        "a",
+        "1"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "get",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db",
+        "a"
+      ],
+      "exit": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "del",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db",
+        "missing"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "del",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db",
+        "a"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "get",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db",
+        "a"
+      ],
+      "exit": 0,
+      "stdout": "NOTFOUND\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "batch",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/ops.txt"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "dump",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db"
+      ],
+      "exit": 0,
+      "stdout": "city\thex:4e65772044656c6869\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "check",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "serve",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db"
+      ],
+      "exit": 0,
+      "stdout": "READY keys=1 recovery_ms=0.090\nACK w1-1\nVAL w1-2 blue\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "inspect",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db"
+      ],
+      "exit": 0,
+      "stdout": "offset=16 length=25 crc=OK ops=1 keys=a\noffset=41 length=30 crc=OK ops=1 keys=missing\noffset=71 length=24 crc=OK ops=1 keys=a\noffset=95 length=64 crc=OK ops=3 keys=city,color,color\noffset=159 length=32 crc=OK ops=1 keys=color\nend=192 torn_tail_bytes=0\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "compact",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/cli.db"
+      ],
+      "exit": 0,
+      "stdout": "before=192 after=69\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "put",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/f4.db",
+        "a",
+        "a"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "put",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/f4.db",
+        "b",
+        "b"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "put",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/f4.db",
+        "c",
+        "c"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "check",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/f4.db"
+      ],
+      "exit": 0,
+      "stdout": "OK\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "open",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/f4.db"
+      ],
+      "exit": 0,
+      "stdout": "keys=3 recovery_ms=2.526\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "dump",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/f4.db"
+      ],
+      "exit": 0,
+      "stdout": "a\ta\nb\tb\nc\tc\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "get",
+        "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/contracts/f4.db",
+        "c"
+      ],
+      "exit": 0,
+      "stdout": "c\n",
+      "stderr": ""
+    }
+  ],
+  "F4_before_open": "OK\n",
+  "F4_open": "keys=3 recovery_ms=2.526\n",
+  "F4_after_dump": "a\ta\nb\tb\nc\tc\n",
+  "F4_acknowledged_last_key_lost": false,
+  "network_guard_verified": true,
+  "clean_clone_build": {
+    "exit": 0,
+    "stdout": "python3 --version\nPython 3.12.3\npython3 -c \"import sys; sys.exit(0 if sys.version_info >= (3, 10) else \\\"Python 3.10+ required\\\")\"\npython3 -m compileall -q src torturelib\nchmod +x kvdb torture\nBUILD OK\n",
+    "stderr": ""
+  },
+  "offline_guarded_put": "OK\n",
+  "offline_guarded_get": "works\n",
+  "offline_scope": "Python process-level socket guard; Wi-Fi adapter was not switched off; local Git clone, not a network clone",
+  "architecture_ids": {
+    "rows": 32,
+    "unique": 32,
+    "duplicates": [],
+    "not_verified_rows": 0
+  },
+  "non_stdlib_runtime_imports": [],
+  "torture_default_iterations": "500",
+  "prompt_log_has_entries": false
+}

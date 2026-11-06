@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "passed": 500,
+  "iterations": 500,
+  "seed": 2026110613,
+  "one_database": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/same_database_f1/persistent.db",
+  "seconds": 517.94
+}

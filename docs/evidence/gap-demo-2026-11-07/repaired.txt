@@ -1,0 +1,10 @@
+$ python3 -B ./kvdb open "$DEMO_DIR/demo.db"
+keys=3 recovery_ms=13.356
+$ python3 -B ./kvdb check "$DEMO_DIR/demo.db"
+OK
+$ python3 -B ./kvdb dump "$DEMO_DIR/demo.db"
+city	Delhi
+color	blue
+status	ready
+$ python3 -B ./kvdb get "$DEMO_DIR/demo.db" obsolete
+NOTFOUND

@@ -1,0 +1,1 @@
+OK torn-tail=9 bytes (open will truncate)

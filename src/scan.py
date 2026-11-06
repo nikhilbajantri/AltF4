@@ -30,7 +30,7 @@ class Frame:
 @dataclass
 class Tail:
     """Always the last record: where the scan stopped and what is past it."""
-    offset: int                     # end of the last good frame (open truncates here)
+    offset: int                     # clean physical EOF, or first damaged frame
     tail_bytes: int                 # bytes past offset
     later_frame: Optional[int] = None  # a CRC-valid frame found past the stop point
     header_prefix: bool = False     # file is an unfinished header (open rewrites it)
@@ -67,6 +67,8 @@ def _scan(m, size):
             yield Frame(pos, fmt.FRAME_HDR_SIZE + length, "corrupt", reason=e.reason)
             break
         if r is None:
+            if pos > fmt.HEADER_SIZE and size == pos + 1 and m[pos:size] == fmt.TAIL_GUARD:
+                pos = size  # Optional expendable guard is a clean physical EOF.
             if pos < size:
                 yield Frame(pos, size - pos, "torn")
             break

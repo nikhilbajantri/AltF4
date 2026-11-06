@@ -1,0 +1,181 @@
+{
+  "commit": "f1a1c0cc008dcd764baad749d35d4f1ed0d6822b",
+  "started_utc": "2026-11-06T21:09:22.638222+00:00",
+  "directory": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5",
+  "sources": {
+    "tests/__init__.py": "eec1de0e305c1b249d1153724962bce04011585f15357a8972ea867ea2560870",
+    "tests/test_gate_storage.py": "1ef3ec5d0a2c7b15ca26a10c9464b61a376fb29ffd112732317fd2dd7d594720",
+    "tests/bench_batch_memory.py": "3f729e261eb11a83691c9f3d1cb7bb586d72eb9d798cb53923178781896b3721",
+    "tests/test_shared_batches.py": "193ac2d97259196a812d72c449c1ab73e6a3e4148a4db89292350475aa392f54",
+    "tests/test_crashpoints.py": "30f2bc96ac50c049c2ddebf12590f5cbbec11cbd97dca0378378b35f8a9c9e2e",
+    "tests/test_engine.py": "3dce5b430c5ec7570a873c7dbd6ff667e516f19a60b9de02fb6cc638f2b96480",
+    "tests/test_serve.py": "7253bbd751b603c23cdc994850810385e82af48e3a05cddb3e429c98e68cfa55",
+    "tests/test_crash_campaign.py": "5a7fcca4dad911b05968b5ff45bc8afe83a78fdf403a2c5a93d6910ac067cbc7",
+    "tests/bench_compact.py": "942d74b4c205e915b11473b49e90210e2acb242d06c92ab3e23a04cbd57a9476",
+    "tests/test_compact.py": "b3520198924eafd44c71279b47aacc8870ced2c1f55cfb4fae2742d5563485a8",
+    "tests/test_batch_memory.py": "9877b96d4ced025a8d3d1a0d62f26206791007592a445446e38f6294e2eec1aa",
+    "tests/test_review_fixes.py": "2febfa8414f1113a227dbfa8e3a9c355b0bb631399c08d384e79c809b54d0dbf",
+    "tests/bench_recovery.py": "4f9ba07ac346f02d18d1d7a5337bd54a6334723447b293dbcc1982d9720a2267",
+    "tests/bench_f3_kill.py": "83cca1cf6171ea458218a79c90210f6c580f654e934fad7744ee98cb512bad4a",
+    "tests/test_cli.py": "48938624ff69c7536c179aac9b5a7a7e715dca642f54db7b598e66395c96c763",
+    "tests/test_uncertain_write.py": "42cc8b10f3322e1999d942271671a5e4a8f4ffbd7b44053092304a46ce117207",
+    "tests/test_scan.py": "a1fa8e33b7de577eef9eae6160a28e6c7d55d31861b509ea1fdc83e7fe83d678",
+    "tests/test_torture.py": "6944b306186ae3aea964ec018ac56ca1fdd76dadd83a97e2c0d984e366e765de",
+    "tests/util.py": "66654c2275d6b28084a201cf49cec1726450af6415e4673b72bce56e4b0cbd6f",
+    "tests/test_scan_boundaries.py": "23cfdeac4db5bb9f8c1ba010d6f538be9d2498f0d5dc55359022dd2fc3ebf3a7",
+    "tests/test_format.py": "2171714305bdcf505f605e7e7b23cfaefc02fed45bc28823853dd46eaee2e504",
+    "tests/test_tail_guard.py": "d3760add0b8616f08d82b704f9e404e8507cd254202af5998b8e07e6d2923e74",
+    "src/__init__.py": "4e0d93df7280e36275d723e1fade4b633141061f1285f3f25f594514ee3eae7d",
+    "src/crash.py": "b67b39baac3d8482d460b81258daabe9c64de1ba9ecfa5deca0314fcb0134518",
+    "src/format.py": "9c4df7fed325b0a750eeea824401fade45ee46c576248b6e15b9837b99b641b1",
+    "src/cli.py": "8a0e22ca2ee05c1b1ec9cb701e90a91a1d3e5bbbf78f45e78f0516b77e504796",
+    "src/serve.py": "d835fde802fba553c176a2e61a62d2c96adb2d7365f421561388c48bf976889d",
+    "src/engine.py": "16656e6f14e6fa3970f9be21461e74ad28bbc0cf7f97f4499bfcf4b3aa7a48e8",
+    "src/engine_fake.py": "88ecb3b97379d8c61e612262d0d3b000430b758729ef51aec4bc47d4ee58bf5e",
+    "src/scan.py": "754fa999641ccc203340337816cf3f0d2e5930068ce5ca0a5b4b4b46a5b56dc9",
+    "src/inspect_cmd.py": "ebf75c3777ed957a7661504496d33b8c02c055bab396a998cffad1a1ebbdf94e",
+    "src/errors.py": "52a20c26ca795318a06456d9acaa4c56b8bc110d630e2e6de826f498b2c5a524",
+    "torturelib/__init__.py": "26a6c759bf1df02c2e18d802e78ff149d3fa7f0521b9aedd0e15fdfe5ddd38c1",
+    "torturelib/protocol.py": "a3e145d2f247cc5cce6641b973f93610d1b363b63eec4405d9a5f0cd1780680d",
+    "torturelib/modes.py": "67deb2b533a7f11d6beaa02baf991831bf87ba6d729fdb3407cb4611c8baa6eb",
+    "torturelib/workload.py": "0b296c29b19ce7fcdd646c64e04e031c2f3fd88f9d89df396a45cb76441d7a8e",
+    "torturelib/crash_probe.py": "94fb1437b0112072a80973483de290512338305dbfcbc6b69301053e31d8c218",
+    "torturelib/runner.py": "bc71636536a5bd1cb61fd776b935f4796768e665b0fff80c1a7dfb37d55ab2c5",
+    "torturelib/oracle.py": "12609c1428123aa0f3e2429c64ce6628564e4ed0b3a5bdf8abdbdb6807601912",
+    "tools/ps_measure_recovery.py": "f74cbb641662306771f2629aa3f30628af1a7793099250a0a4e2472c7c6e8c05",
+    "tools/ps_f1_same_database.py": "d6ed08677e091c4c249916138a230c22d780c76950c39c1d518016ac5adfc9ef",
+    "tools/ps_check_contracts.py": "67748c22cc8aecbadcca249911b5ecd43810b65396d0c39aa0df3ebcb26b402b",
+    "tools/ps_specific_scenarios.py": "835795de450aaf805ac006c5c8d887ed0febb7b6648a934bd64628729ad8ddc8",
+    "tools/run_ps_acceptance.py": "b56a075b2776756c5fc5c9e2946427d965082ffd4c6055a07537d6552a3c9cc1",
+    "tools/run_final_gate.py": "1b6f3e3f268e823681cff079c0c0855121bcf26318a0e112da3f6336dbfac331",
+    "tools/check_ps_half_batch.py": "deefac37f868c97bcb697b60570b38001c2d3ee5a7c63f7a1bcea1eddc10352b"
+  },
+  "phases": {
+    "performance": {
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "tools/ps_measure_recovery.py",
+        "--output",
+        "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/performance"
+      ],
+      "log": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/performance.txt",
+      "exit": 0,
+      "completed": true,
+      "seconds": 41.082
+    },
+    "build": {
+      "command": [
+        "make",
+        "build"
+      ],
+      "log": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/build.txt",
+      "exit": 0,
+      "completed": true,
+      "seconds": 1.007
+    },
+    "unit": {
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "-v"
+      ],
+      "log": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/unit.txt",
+      "exit": 0,
+      "completed": true,
+      "seconds": 24.053
+    },
+    "contracts": {
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "tools/ps_check_contracts.py",
+        "--output",
+        "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/contracts"
+      ],
+      "log": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/contracts.txt",
+      "exit": 0,
+      "completed": true,
+      "seconds": 1.005
+    },
+    "specific": {
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "tools/ps_specific_scenarios.py",
+        "--output",
+        "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/specific"
+      ],
+      "log": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/specific.txt",
+      "exit": 0,
+      "completed": true,
+      "seconds": 1.003
+    },
+    "half_batch": {
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "tools/check_ps_half_batch.py",
+        "--output",
+        "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/half_batch"
+      ],
+      "log": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/half_batch.txt",
+      "exit": 0,
+      "completed": true,
+      "seconds": 1.002
+    },
+    "modes": {
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "tools/run_final_gate.py",
+        "--iterations",
+        "500",
+        "--seeds",
+        "84221",
+        "--workers",
+        "4",
+        "--data-dir",
+        "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/modes",
+        "--host-storage-dir",
+        "/mnt/c",
+        "--host-storage-dir",
+        "/mnt/d"
+      ],
+      "log": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/modes.txt",
+      "exit": 0,
+      "completed": true,
+      "seconds": 620.475
+    },
+    "same_database_f1": {
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "tools/ps_f1_same_database.py",
+        "--output",
+        "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/same_database_f1",
+        "--iterations",
+        "500",
+        "--seed",
+        "84222",
+        "--host-storage-dir",
+        "/mnt/c",
+        "--host-storage-dir",
+        "/mnt/d"
+      ],
+      "log": "/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/same_database_f1.txt",
+      "exit": 0,
+      "completed": true,
+      "seconds": 287.637
+    }
+  },
+  "active_phase": "complete",
+  "sources_unchanged": true,
+  "known_noncompliance": [
+    "Prompt log empty"
+  ],
+  "all_requirements_satisfied": false,
+  "ended_utc": "2026-11-06T21:21:01.886836+00:00"
+}

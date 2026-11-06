@@ -1,0 +1,13 @@
+Evidence directory: /home/arsht/tmp_test/ps-acceptance-7w_ohe0e/performance
+F3 31337 engine_ms= 681.448 CLI_wall_ms= 1183.8 strict_pass= True
+F3 2026110608 engine_ms= 674.582 CLI_wall_ms= 1143.3 strict_pass= True
+F3 2026110609 engine_ms= 871.57 CLI_wall_ms= 1410.4 strict_pass= True
+Prepared exactly 1,000,000 one-op frames.
+One-million-frame replay 1 engine_ms= 1559.34 strict_pass= True
+One-million-frame replay 2 engine_ms= 1593.336 strict_pass= True
+One-million-frame replay 3 engine_ms= 1638.689 strict_pass= True
+B6 recovery_ms= 5.7639949998247175
+puts:    keys=1000000 file_bytes=37001616 write_s=2.12 recovery_ms=615.0
+compact: delete_s=1.61 size_before=54003216 size_after=16 compact_ms=10.1
+
+AUDIT_RESULTS=/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/performance/results.json
