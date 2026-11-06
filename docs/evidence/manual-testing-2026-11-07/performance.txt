@@ -1,0 +1,13 @@
+Evidence directory: /home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/performance
+F3 31337 engine_ms= 527.392 CLI_wall_ms= 567.1 strict_pass= True
+F3 2026110608 engine_ms= 558.539 CLI_wall_ms= 598.9 strict_pass= True
+F3 2026110609 engine_ms= 580.478 CLI_wall_ms= 624.2 strict_pass= True
+Prepared exactly 1,000,000 one-op frames.
+One-million-frame replay 1 engine_ms= 1562.375 strict_pass= True
+One-million-frame replay 2 engine_ms= 1558.69 strict_pass= True
+One-million-frame replay 3 engine_ms= 1646.382 strict_pass= True
+B6 recovery_ms= 2.788042000247515
+puts:    keys=1000000 file_bytes=37001617 write_s=1.87 recovery_ms=540.7
+compact: delete_s=1.53 size_before=54003217 size_after=16 compact_ms=8.8
+
+AUDIT_RESULTS=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5/performance/results.json

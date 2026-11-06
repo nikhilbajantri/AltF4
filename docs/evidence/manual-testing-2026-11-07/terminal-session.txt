@@ -1,0 +1,620 @@
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ cd "/mnt/d/ALT F4/AltF4"
+unset KVDB_CRASH
+make build
+python3 --version
+Python 3.12.3
+python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else \"Python 3.10+ required\")"
+python3 -m compileall -q src torturelib
+chmod +x kvdb torture
+BUILD OK
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ mkdir -p "$HOME/tmp_test"
+PRACTICE_DIR=$(mktemp -d "$HOME/tmp_test/arsh-manual-XXXXXX")
+DB="$PRACTICE_DIR/practice.db"
+echo "$DB"
+/home/arsht/tmp_test/arsh-manual-XwvXdf/practice.db
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ python3 ./kvdb open "$DB"
+python3 ./kvdb put "$DB" name Arsh
+python3 ./kvdb get "$DB" name
+keys=0 recovery_ms=2.752
+OK
+Arsh
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ python3 ./kvdb put "$DB" name Arsh_updated
+python3 ./kvdb get "$DB" name
+OK
+Arsh_updated
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ python3 ./kvdb del "$DB" name
+python3 ./kvdb get "$DB" name
+OK
+NOTFOUND
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ bash -c 'echo "SERVER_PID=$$"; exec python3 -B -m src.serve "$1"' _ "$DB"
+SERVER_PID=108343
+READY keys=0 recovery_ms=0.094
+put w1-1 name Arsh
+ACK w1-1
+batch w1-2
+put city Delhi
+put status learning
+end
+ACK w1-2
+Killed
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ python3 ./kvdb open "$DB"
+python3 ./kvdb check "$DB"
+python3 ./kvdb dump "$DB"
+keys=3 recovery_ms=0.204
+OK
+city    Delhi
+name    Arsh
+status  learning
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ KVDB_CRASH=torn_write:1 python3 -B -m src.serve "$DB"
+READY keys=3 recovery_ms=0.094
+batch w1-3
+put city Mumbai
+put status finished
+end
+Killed
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ python3 ./kvdb check "$DB"
+OK torn-tail=52 bytes (open will truncate)
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ python3 ./kvdb open "$DB"
+python3 ./kvdb check "$DB"
+python3 ./kvdb dump "$DB"
+keys=3 recovery_ms=14.206
+OK
+city    Delhi
+name    Arsh
+status  learning
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ truncate -s -1 "$DB"
+python3 ./kvdb open "$DB"
+python3 ./kvdb check "$DB"
+python3 ./kvdb dump "$DB"
+keys=3 recovery_ms=2.635
+OK
+city    Delhi
+name    Arsh
+status  learning
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ quit
+Command 'quit' not found, but can be installed with:
+sudo snap install quit
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ mkdir -p "$HOME/tmp_test"
+LAB=$(mktemp -d "$HOME/tmp_test/arsh-judging-XXXXXX")
+mkdir -p "$LAB/evidence"
+
+unset KVDB_CRASH
+set -o pipefail
+TIMEFORMAT='Elapsed: %3R seconds'
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ time (
+  git clone --no-hardlinks "/mnt/d/ALT F4/AltF4" "$LAB/AltF4" &&
+  cd "$LAB/AltF4" &&
+  make build
+)
+Cloning into '/home/arsht/tmp_test/arsh-judging-gdhZIl/AltF4'...
+done.
+python3 --version
+Python 3.12.3
+python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else \"Python 3.10+ required\")"
+python3 -m compileall -q src torturelib
+chmod +x kvdb torture
+BUILD OK
+Elapsed: 2.559 seconds
+arsht@WIN-RO2UQQ0R3FN:/mnt/d/ALT F4/AltF4$ cd "$LAB/AltF4"
+git rev-parse --short HEAD
+f1a1c0c
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ time ./torture \
+  --iterations 200 \
+  --seed 84217 \
+  --mode default \
+  --compress-log \
+  --data-dir "$LAB/evidence/default" \
+  --host-storage-dir /mnt/c \
+  --host-storage-dir /mnt/d \
+  --min-free-gib 20
+seed=84217 mode=default evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/default/seed-84217-l877_o3u
+iteration=1 kill_ms=179.563 exit_wait_s=0.001 awaiting_response=['w1-4', 'w2-4'] world=0 ACKs={'w1': 4, 'w2': 4} PASS
+iteration=2 kill_ms=512.927 exit_wait_s=0.001 awaiting_response=['w2-18'] world=0 ACKs={'w1': 19, 'w2': 17} PASS
+iteration=3 kill_ms=44.028 exit_wait_s=0.001 awaiting_response=['w2-2'] world=0 ACKs={'w1': 4, 'w2': 2} PASS
+iteration=4 kill_ms=122.904 exit_wait_s=0.001 awaiting_response=['w1-4'] world=0 ACKs={'w1': 4, 'w2': 5} PASS
+iteration=5 kill_ms=18.940 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=6 kill_ms=87.995 exit_wait_s=0.001 awaiting_response=['w2-6', 'w1-6'] world=0 ACKs={'w1': 6, 'w2': 6} PASS
+iteration=7 kill_ms=163.144 exit_wait_s=0.001 awaiting_response=['w2-4'] world=0 ACKs={'w1': 4, 'w2': 4} PASS
+iteration=8 kill_ms=118.576 exit_wait_s=0.001 awaiting_response=['w2-14'] world=0 ACKs={'w1': 13, 'w2': 13} PASS
+iteration=9 kill_ms=2.947 exit_wait_s=0.001 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=10 kill_ms=520.074 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 20, 'w2': 17} PASS
+iteration=11 kill_ms=150.954 exit_wait_s=0.003 awaiting_response=['w1-20', 'w2-20'] world=0 ACKs={'w1': 19, 'w2': 19} PASS
+iteration=12 kill_ms=5.786 exit_wait_s=0.016 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=13 kill_ms=520.833 exit_wait_s=0.001 awaiting_response=['w2-11'] world=0 ACKs={'w1': 13, 'w2': 10} PASS
+iteration=14 kill_ms=18.968 exit_wait_s=0.003 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=15 kill_ms=74.418 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 9, 'w2': 7} PASS
+iteration=16 kill_ms=368.060 exit_wait_s=0.001 awaiting_response=['w1-19', 'w2-17'] world=0 ACKs={'w1': 18, 'w2': 16} PASS
+iteration=17 kill_ms=4.127 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=18 kill_ms=180.537 exit_wait_s=0.003 awaiting_response=['w2-2', 'w1-3'] world=0 ACKs={'w1': 3, 'w2': 2} PASS
+iteration=19 kill_ms=8.938 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=20 kill_ms=4.856 exit_wait_s=0.003 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=21 kill_ms=645.485 exit_wait_s=0.001 awaiting_response=['w1-35'] world=0 ACKs={'w1': 34, 'w2': 35} PASS
+iteration=22 kill_ms=3.335 exit_wait_s=0.001 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=23 kill_ms=2.076 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=24 kill_ms=61.455 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 9, 'w2': 9} PASS
+iteration=25 kill_ms=10.775 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=26 kill_ms=213.641 exit_wait_s=0.001 awaiting_response=['w2-4', 'w1-5'] world=0 ACKs={'w1': 5, 'w2': 4} PASS
+iteration=27 kill_ms=25.576 exit_wait_s=0.001 awaiting_response=['w1-2', 'w2-2'] world=0 ACKs={'w1': 2, 'w2': 2} PASS
+iteration=28 kill_ms=24.791 exit_wait_s=0.003 awaiting_response=['w2-4', 'w1-5'] world=0 ACKs={'w1': 5, 'w2': 4} PASS
+iteration=29 kill_ms=312.732 exit_wait_s=0.001 awaiting_response=['w1-12'] world=0 ACKs={'w1': 11, 'w2': 11} PASS
+iteration=30 kill_ms=71.655 exit_wait_s=0.001 awaiting_response=['w2-6'] world=0 ACKs={'w1': 6, 'w2': 6} PASS
+iteration=31 kill_ms=23.992 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=32 kill_ms=798.769 exit_wait_s=0.001 awaiting_response=['w1-12'] world=0 ACKs={'w1': 11, 'w2': 14} PASS
+iteration=33 kill_ms=186.164 exit_wait_s=0.001 awaiting_response=['w1-5'] world=0 ACKs={'w1': 5, 'w2': 5} PASS
+iteration=34 kill_ms=5.951 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=35 kill_ms=18.674 exit_wait_s=0.001 awaiting_response=['w2-0', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=36 kill_ms=718.713 exit_wait_s=0.003 awaiting_response=['w1-42'] world=0 ACKs={'w1': 40, 'w2': 43} PASS
+iteration=37 kill_ms=220.963 exit_wait_s=0.001 awaiting_response=['w2-9', 'w1-10'] world=0 ACKs={'w1': 10, 'w2': 8} PASS
+iteration=38 kill_ms=303.418 exit_wait_s=0.001 awaiting_response=['w1-3', 'w2-4'] world=0 ACKs={'w1': 3, 'w2': 4} PASS
+iteration=39 kill_ms=372.097 exit_wait_s=0.001 awaiting_response=['w2-8'] world=0 ACKs={'w1': 9, 'w2': 8} PASS
+iteration=40 kill_ms=925.045 exit_wait_s=0.001 awaiting_response=['w2-17', 'w1-16'] world=0 ACKs={'w1': 15, 'w2': 16} PASS
+iteration=41 kill_ms=38.990 exit_wait_s=0.003 awaiting_response=['w1-3', 'w2-4'] world=0 ACKs={'w1': 3, 'w2': 4} PASS
+iteration=42 kill_ms=9.937 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=43 kill_ms=106.345 exit_wait_s=0.001 awaiting_response=['w1-8', 'w2-7'] world=0 ACKs={'w1': 7, 'w2': 7} PASS
+iteration=44 kill_ms=85.879 exit_wait_s=0.001 awaiting_response=['w2-4', 'w1-5'] world=0 ACKs={'w1': 5, 'w2': 4} PASS
+iteration=45 kill_ms=23.763 exit_wait_s=0.003 awaiting_response=['w1-1', 'w2-2'] world=0 ACKs={'w1': 1, 'w2': 2} PASS
+iteration=46 kill_ms=84.331 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 8, 'w2': 11} PASS
+iteration=47 kill_ms=112.834 exit_wait_s=0.001 awaiting_response=['w1-3'] world=0 ACKs={'w1': 3, 'w2': 5} PASS
+iteration=48 kill_ms=15.391 exit_wait_s=0.003 awaiting_response=['w2-0', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=49 kill_ms=298.763 exit_wait_s=0.001 awaiting_response=['w1-23', 'w2-27'] world=0 ACKs={'w1': 22, 'w2': 25} PASS
+iteration=50 kill_ms=107.215 exit_wait_s=0.001 awaiting_response=['w2-1', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=51 kill_ms=474.285 exit_wait_s=0.001 awaiting_response=['w1-14', 'w2-12'] world=0 ACKs={'w1': 13, 'w2': 11} PASS
+iteration=52 kill_ms=6.970 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=53 kill_ms=5.374 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=54 kill_ms=170.598 exit_wait_s=0.001 awaiting_response=['w1-16', 'w2-17'] world=0 ACKs={'w1': 17, 'w2': 16} PASS
+iteration=55 kill_ms=107.926 exit_wait_s=0.001 awaiting_response=['w2-3'] world=0 ACKs={'w1': 4, 'w2': 3} PASS
+iteration=56 kill_ms=64.896 exit_wait_s=0.001 awaiting_response=['w1-5'] world=0 ACKs={'w1': 5, 'w2': 4} PASS
+iteration=57 kill_ms=33.775 exit_wait_s=0.001 awaiting_response=['w2-2', 'w1-3'] world=0 ACKs={'w1': 3, 'w2': 2} PASS
+iteration=58 kill_ms=24.358 exit_wait_s=0.001 awaiting_response=['w2-2'] world=0 ACKs={'w1': 4, 'w2': 2} PASS
+iteration=59 kill_ms=238.129 exit_wait_s=0.001 awaiting_response=['w1-4'] world=0 ACKs={'w1': 4, 'w2': 5} PASS
+iteration=60 kill_ms=56.484 exit_wait_s=0.001 awaiting_response=['w1-3'] world=0 ACKs={'w1': 3, 'w2': 3} PASS
+iteration=61 kill_ms=710.071 exit_wait_s=0.001 awaiting_response=['w2-10', 'w1-11'] world=0 ACKs={'w1': 11, 'w2': 9} PASS
+iteration=62 kill_ms=29.669 exit_wait_s=0.003 awaiting_response=['w1-6', 'w2-4'] world=0 ACKs={'w1': 6, 'w2': 4} PASS
+iteration=63 kill_ms=5.329 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=64 kill_ms=2.895 exit_wait_s=0.003 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=65 kill_ms=769.757 exit_wait_s=0.003 awaiting_response=['w2-7', 'w1-11'] world=0 ACKs={'w1': 11, 'w2': 7} PASS
+iteration=66 kill_ms=473.241 exit_wait_s=0.001 awaiting_response=['w1-16'] world=0 ACKs={'w1': 15, 'w2': 15} PASS
+iteration=67 kill_ms=2.411 exit_wait_s=0.003 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=68 kill_ms=68.629 exit_wait_s=0.001 awaiting_response=['w2-1', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=69 kill_ms=123.059 exit_wait_s=0.001 awaiting_response=['w2-3'] world=0 ACKs={'w1': 4, 'w2': 3} PASS
+iteration=70 kill_ms=96.334 exit_wait_s=0.001 awaiting_response=['w1-3', 'w2-2'] world=0 ACKs={'w1': 4, 'w2': 2} PASS
+iteration=71 kill_ms=14.284 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=72 kill_ms=2.064 exit_wait_s=0.015 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=73 kill_ms=434.001 exit_wait_s=0.001 awaiting_response=['w2-37', 'w1-38'] world=0 ACKs={'w1': 36, 'w2': 35} PASS
+iteration=74 kill_ms=58.155 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=75 kill_ms=3.905 exit_wait_s=0.016 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=76 kill_ms=5.838 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=77 kill_ms=209.567 exit_wait_s=0.001 awaiting_response=['w2-17', 'w1-15'] world=0 ACKs={'w1': 15, 'w2': 17} PASS
+iteration=78 kill_ms=20.901 exit_wait_s=0.003 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=79 kill_ms=2.320 exit_wait_s=0.003 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=80 kill_ms=6.181 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=81 kill_ms=104.110 exit_wait_s=0.001 awaiting_response=['w1-2', 'w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=82 kill_ms=21.494 exit_wait_s=0.001 awaiting_response=['w1-2', 'w2-3'] world=0 ACKs={'w1': 3, 'w2': 3} PASS
+iteration=83 kill_ms=12.752 exit_wait_s=0.001 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=84 kill_ms=6.224 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=85 kill_ms=16.694 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=86 kill_ms=28.990 exit_wait_s=0.001 awaiting_response=['w1-2'] world=0 ACKs={'w1': 2, 'w2': 2} PASS
+iteration=87 kill_ms=43.233 exit_wait_s=0.001 awaiting_response=['w1-3'] world=0 ACKs={'w1': 4, 'w2': 4} PASS
+iteration=88 kill_ms=38.620 exit_wait_s=0.001 awaiting_response=['w2-4'] world=0 ACKs={'w1': 6, 'w2': 4} PASS
+iteration=89 kill_ms=4.102 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=90 kill_ms=700.894 exit_wait_s=0.001 awaiting_response=['w2-39', 'w1-36'] world=0 ACKs={'w1': 34, 'w2': 37} PASS
+iteration=91 kill_ms=3.381 exit_wait_s=0.001 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=92 kill_ms=6.053 exit_wait_s=0.001 awaiting_response=['w2-1', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=93 kill_ms=17.487 exit_wait_s=0.007 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=94 kill_ms=249.434 exit_wait_s=0.001 awaiting_response=['w2-15'] world=0 ACKs={'w1': 16, 'w2': 14} PASS
+iteration=95 kill_ms=59.845 exit_wait_s=0.001 awaiting_response=['w2-6'] world=0 ACKs={'w1': 5, 'w2': 6} PASS
+iteration=96 kill_ms=99.017 exit_wait_s=0.001 awaiting_response=['w1-9', 'w2-12'] world=0 ACKs={'w1': 9, 'w2': 11} PASS
+iteration=97 kill_ms=834.649 exit_wait_s=0.003 awaiting_response=['w2-18', 'w1-14'] world=0 ACKs={'w1': 13, 'w2': 17} PASS
+iteration=98 kill_ms=292.938 exit_wait_s=0.001 awaiting_response=['w1-38'] world=0 ACKs={'w1': 36, 'w2': 34} PASS
+iteration=99 kill_ms=643.912 exit_wait_s=0.001 awaiting_response=['w2-10', 'w1-11'] world=0 ACKs={'w1': 10, 'w2': 9} PASS
+iteration=100 kill_ms=842.948 exit_wait_s=0.001 awaiting_response=['w1-39', 'w2-36'] world=0 ACKs={'w1': 39, 'w2': 34} PASS
+iteration=101 kill_ms=17.804 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=102 kill_ms=12.326 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=103 kill_ms=84.451 exit_wait_s=0.001 awaiting_response=['w1-11'] world=0 ACKs={'w1': 10, 'w2': 12} PASS
+iteration=104 kill_ms=5.764 exit_wait_s=0.007 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=105 kill_ms=117.087 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=106 kill_ms=118.896 exit_wait_s=0.000 awaiting_response=['w1-7'] world=0 ACKs={'w1': 7, 'w2': 7} PASS
+iteration=107 kill_ms=4.817 exit_wait_s=0.015 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=108 kill_ms=22.130 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 2, 'w2': 2} PASS
+iteration=109 kill_ms=26.517 exit_wait_s=0.001 awaiting_response=['w2-1', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=110 kill_ms=221.055 exit_wait_s=0.001 awaiting_response=['w1-4'] world=0 ACKs={'w1': 4, 'w2': 4} PASS
+iteration=111 kill_ms=24.993 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 2, 'w2': 2} PASS
+iteration=112 kill_ms=503.621 exit_wait_s=0.001 awaiting_response=['w1-5', 'w2-4'] world=0 ACKs={'w1': 5, 'w2': 4} PASS
+iteration=113 kill_ms=344.739 exit_wait_s=0.001 awaiting_response=['w1-20'] world=0 ACKs={'w1': 19, 'w2': 22} PASS
+iteration=114 kill_ms=13.060 exit_wait_s=0.001 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=115 kill_ms=7.574 exit_wait_s=0.001 awaiting_response=['w2-0', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=116 kill_ms=8.871 exit_wait_s=0.002 awaiting_response=['w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=117 kill_ms=37.134 exit_wait_s=0.004 awaiting_response=['w2-2', 'w1-3'] world=0 ACKs={'w1': 3, 'w2': 2} PASS
+iteration=118 kill_ms=15.708 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=119 kill_ms=26.180 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=120 kill_ms=457.897 exit_wait_s=0.001 awaiting_response=['w1-12'] world=0 ACKs={'w1': 11, 'w2': 12} PASS
+iteration=121 kill_ms=5.429 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=122 kill_ms=3.564 exit_wait_s=0.015 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=123 kill_ms=85.852 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=124 kill_ms=299.247 exit_wait_s=0.001 awaiting_response=['w1-26', 'w2-28'] world=0 ACKs={'w1': 24, 'w2': 27} PASS
+iteration=125 kill_ms=2.127 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=126 kill_ms=98.587 exit_wait_s=0.003 awaiting_response=['w2-9', 'w1-11'] world=0 ACKs={'w1': 10, 'w2': 9} PASS
+iteration=127 kill_ms=75.968 exit_wait_s=0.001 awaiting_response=['w1-7', 'w2-7'] world=0 ACKs={'w1': 7, 'w2': 7} PASS
+iteration=128 kill_ms=3.691 exit_wait_s=0.015 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=129 kill_ms=44.513 exit_wait_s=0.001 awaiting_response=['w2-3'] world=0 ACKs={'w1': 3, 'w2': 3} PASS
+iteration=130 kill_ms=8.761 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=131 kill_ms=310.578 exit_wait_s=0.001 awaiting_response=['w2-2', 'w1-2'] world=0 ACKs={'w1': 2, 'w2': 2} PASS
+iteration=132 kill_ms=41.851 exit_wait_s=0.001 awaiting_response=['w1-6'] world=0 ACKs={'w1': 6, 'w2': 4} PASS
+iteration=133 kill_ms=2.168 exit_wait_s=0.001 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=134 kill_ms=21.953 exit_wait_s=0.001 awaiting_response=['w1-2', 'w2-2'] world=0 ACKs={'w1': 2, 'w2': 2} PASS
+iteration=135 kill_ms=260.537 exit_wait_s=0.001 awaiting_response=['w1-28', 'w2-27'] world=0 ACKs={'w1': 27, 'w2': 25} PASS
+iteration=136 kill_ms=250.407 exit_wait_s=0.001 awaiting_response=['w2-5'] world=0 ACKs={'w1': 5, 'w2': 5} PASS
+iteration=137 kill_ms=108.412 exit_wait_s=0.001 awaiting_response=['w1-8', 'w2-8'] world=0 ACKs={'w1': 7, 'w2': 8} PASS
+iteration=138 kill_ms=3.113 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=139 kill_ms=201.036 exit_wait_s=0.003 awaiting_response=['w1-25'] world=0 ACKs={'w1': 23, 'w2': 21} PASS
+iteration=140 kill_ms=3.108 exit_wait_s=0.016 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=141 kill_ms=89.922 exit_wait_s=0.001 awaiting_response=['w2-8', 'w1-7'] world=0 ACKs={'w1': 7, 'w2': 7} PASS
+iteration=142 kill_ms=78.694 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=143 kill_ms=36.320 exit_wait_s=0.001 awaiting_response=['w1-4'] world=0 ACKs={'w1': 4, 'w2': 7} PASS
+iteration=144 kill_ms=27.007 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 3, 'w2': 1} PASS
+iteration=145 kill_ms=48.638 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=146 kill_ms=12.353 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=147 kill_ms=41.853 exit_wait_s=0.001 awaiting_response=['w2-5', 'w1-4'] world=0 ACKs={'w1': 4, 'w2': 5} PASS
+iteration=148 kill_ms=429.265 exit_wait_s=0.016 awaiting_response=['w1-13', 'w2-14'] world=0 ACKs={'w1': 12, 'w2': 13} PASS
+iteration=149 kill_ms=204.665 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 19, 'w2': 23} PASS
+iteration=150 kill_ms=4.661 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=151 kill_ms=10.314 exit_wait_s=0.001 awaiting_response=['w1-2'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=152 kill_ms=73.565 exit_wait_s=0.001 awaiting_response=['w1-4'] world=0 ACKs={'w1': 4, 'w2': 4} PASS
+iteration=153 kill_ms=3.048 exit_wait_s=0.007 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=154 kill_ms=25.298 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=155 kill_ms=176.616 exit_wait_s=0.001 awaiting_response=['w1-7', 'w2-8'] world=0 ACKs={'w1': 7, 'w2': 7} PASS
+iteration=156 kill_ms=894.410 exit_wait_s=0.001 awaiting_response=['w2-33'] world=0 ACKs={'w1': 25, 'w2': 31} PASS
+iteration=157 kill_ms=93.489 exit_wait_s=0.001 awaiting_response=['w2-7', 'w1-8'] world=0 ACKs={'w1': 8, 'w2': 7} PASS
+iteration=158 kill_ms=6.546 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=159 kill_ms=7.464 exit_wait_s=0.003 awaiting_response=['w2-0', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=160 kill_ms=22.886 exit_wait_s=0.001 awaiting_response=['w2-1', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=161 kill_ms=13.414 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=162 kill_ms=46.886 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=163 kill_ms=186.968 exit_wait_s=0.001 awaiting_response=['w1-24', 'w2-19'] world=0 ACKs={'w1': 23, 'w2': 18} PASS
+iteration=164 kill_ms=299.797 exit_wait_s=0.001 awaiting_response=['w1-4'] world=0 ACKs={'w1': 4, 'w2': 5} PASS
+iteration=165 kill_ms=85.876 exit_wait_s=0.001 awaiting_response=['w1-9'] world=0 ACKs={'w1': 9, 'w2': 8} PASS
+iteration=166 kill_ms=5.997 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=167 kill_ms=182.522 exit_wait_s=0.004 awaiting_response=['w2-8', 'w1-9'] world=0 ACKs={'w1': 9, 'w2': 7} PASS
+iteration=168 kill_ms=37.816 exit_wait_s=0.003 awaiting_response=['w1-4'] world=0 ACKs={'w1': 4, 'w2': 4} PASS
+iteration=169 kill_ms=19.845 exit_wait_s=0.001 awaiting_response=['w1-3'] world=0 ACKs={'w1': 3, 'w2': 3} PASS
+iteration=170 kill_ms=720.859 exit_wait_s=0.001 awaiting_response=['w1-29'] world=0 ACKs={'w1': 27, 'w2': 30} PASS
+iteration=171 kill_ms=6.508 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=172 kill_ms=447.083 exit_wait_s=0.001 awaiting_response=['w1-13'] world=0 ACKs={'w1': 12, 'w2': 14} PASS
+iteration=173 kill_ms=442.949 exit_wait_s=0.001 awaiting_response=['w2-8', 'w1-9'] world=0 ACKs={'w1': 8, 'w2': 8} PASS
+iteration=174 kill_ms=21.461 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 3, 'w2': 3} PASS
+iteration=175 kill_ms=11.665 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=176 kill_ms=16.489 exit_wait_s=0.003 awaiting_response=['w1-2'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=177 kill_ms=58.028 exit_wait_s=0.001 awaiting_response=['w1-6', 'w2-5'] world=0 ACKs={'w1': 6, 'w2': 5} PASS
+iteration=178 kill_ms=367.530 exit_wait_s=0.001 awaiting_response=['w2-8'] world=0 ACKs={'w1': 9, 'w2': 7} PASS
+iteration=179 kill_ms=763.182 exit_wait_s=0.001 awaiting_response=['w2-44'] world=0 ACKs={'w1': 50, 'w2': 41} PASS
+iteration=180 kill_ms=3.369 exit_wait_s=0.001 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=181 kill_ms=11.573 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=182 kill_ms=4.232 exit_wait_s=0.016 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=183 kill_ms=20.727 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 2, 'w2': 1} PASS
+iteration=184 kill_ms=391.783 exit_wait_s=0.001 awaiting_response=['w2-15', 'w1-19'] world=0 ACKs={'w1': 18, 'w2': 15} PASS
+iteration=185 kill_ms=18.760 exit_wait_s=0.001 awaiting_response=['w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=186 kill_ms=71.320 exit_wait_s=0.001 awaiting_response=['w1-4', 'w2-4'] world=0 ACKs={'w1': 4, 'w2': 4} PASS
+iteration=187 kill_ms=85.382 exit_wait_s=0.001 awaiting_response=['w1-8'] world=0 ACKs={'w1': 8, 'w2': 8} PASS
+iteration=188 kill_ms=92.923 exit_wait_s=0.001 awaiting_response=['w1-2'] world=0 ACKs={'w1': 2, 'w2': 2} PASS
+iteration=189 kill_ms=148.641 exit_wait_s=0.001 awaiting_response=['w2-4'] world=0 ACKs={'w1': 6, 'w2': 4} PASS
+iteration=190 kill_ms=618.727 exit_wait_s=0.001 awaiting_response=['w2-26', 'w1-28'] world=0 ACKs={'w1': 27, 'w2': 24} PASS
+iteration=191 kill_ms=37.467 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=192 kill_ms=593.681 exit_wait_s=0.001 awaiting_response=['w2-4'] world=0 ACKs={'w1': 5, 'w2': 4} PASS
+iteration=193 kill_ms=105.423 exit_wait_s=0.003 awaiting_response=['w1-6'] world=0 ACKs={'w1': 6, 'w2': 7} PASS
+iteration=194 kill_ms=4.169 exit_wait_s=0.003 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=195 kill_ms=104.258 exit_wait_s=0.003 awaiting_response=['w2-12'] world=0 ACKs={'w1': 10, 'w2': 11} PASS
+iteration=196 kill_ms=68.897 exit_wait_s=0.001 awaiting_response=['w1-7'] world=0 ACKs={'w1': 7, 'w2': 9} PASS
+iteration=197 kill_ms=95.798 exit_wait_s=0.001 awaiting_response=['w1-9'] world=0 ACKs={'w1': 8, 'w2': 9} PASS
+iteration=198 kill_ms=5.616 exit_wait_s=0.007 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=199 kill_ms=572.068 exit_wait_s=0.001 awaiting_response=['w2-7'] world=0 ACKs={'w1': 9, 'w2': 7} PASS
+iteration=200 kill_ms=39.695 exit_wait_s=0.001 awaiting_response=['w2-4', 'w1-3'] world=0 ACKs={'w1': 3, 'w2': 5} PASS
+SUMMARY PASS=200/200 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.016 kills_awaiting_response=93.5% ACKs={'w1': 1297, 'w2': 1248} mix={'batch': 1044, 'put': 1506, 'ERR': 119, 'shared': 218, 'max_batch': 10000, 'del': 395} worlds={0: 200}
+Awaiting a response does not prove the engine was inside a write at kill time.
+Elapsed: 103.159 seconds
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ time (
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ time (
+  ./torture \ons 100 --seed 84218 --mode compaction \
+    --iterations 100 --seed 84218 --mode compaction \
+    --compress-log \/evidence/compaction" \
+    --data-dir "$LAB/evidence/compaction" \e-dir /mnt/d \
+    --host-storage-dir /mnt/c --host-storage-dir /mnt/d \
+    --min-free-gib 20 &&
+  ./torture \ons 100 --seed 84219 --mode recovery-crash \
+    --iterations 100 --seed 84219 --mode recovery-crash \
+    --compress-log \/evidence/recovery" \
+    --data-dir "$LAB/evidence/recovery" \age-dir /mnt/d \
+    --host-storage-dir /mnt/c --host-storage-dir /mnt/d \
+    --min-free-gib 20
+)
+seed=84218 mode=compaction evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/compaction/seed-84218-9p7lrtuh
+iteration=1 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=2 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=3 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=4 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=5 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=6 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=7 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=8 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=9 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=10 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=11 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=12 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=13 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=14 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=15 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=16 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=17 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=18 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=19 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=20 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=21 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=22 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=23 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=24 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=25 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=26 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=27 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=28 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=29 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=30 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=31 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=32 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=33 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=34 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=35 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=36 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=37 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=38 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=39 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=40 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=41 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=42 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=43 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=44 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=45 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=46 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=47 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=48 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=49 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=50 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=51 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=52 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=53 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=54 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=55 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=56 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=57 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=58 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=59 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=60 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=61 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=62 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=63 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=64 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=65 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=66 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=67 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=68 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=69 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=70 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=71 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=72 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=73 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=74 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=75 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=76 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=77 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=78 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=79 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=80 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=81 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=82 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=83 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=84 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=85 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=86 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=87 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=88 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=89 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=90 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=91 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=92 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=93 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=94 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=95 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=96 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=97 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=98 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=99 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=100 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+SUMMARY PASS=100/100 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=100.0% ACKs={'w1': 100, 'w2': 0} mix={'compact_mid_copy': 25, 'max_batch': 0, 'compact_before_rename': 25, 'compact_after_rename': 25, 'compact_after_swap': 25} worlds={0: 100}
+Awaiting a response does not prove the engine was inside a write at kill time.
+seed=84219 mode=recovery-crash evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/recovery/seed-84219-vkd4vajy
+iteration=1 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=2 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=3 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=4 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=5 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=6 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=7 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=8 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=9 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=10 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=11 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=12 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=13 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=14 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=15 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=16 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=17 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=18 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=19 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=20 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=21 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=22 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=23 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=24 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=25 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=26 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=27 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=28 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=29 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=30 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=31 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=32 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=33 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=34 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=35 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=36 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=37 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=38 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=39 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=40 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=41 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=42 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=43 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=44 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=45 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=46 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=47 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=48 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=49 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=50 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=51 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=52 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=53 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=54 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=55 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=56 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=57 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=58 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=59 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=60 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=61 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=62 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=63 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=64 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=65 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=66 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=67 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=68 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=69 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=70 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=71 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=72 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=73 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=74 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=75 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=76 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=77 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=78 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=79 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=80 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=81 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=82 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=83 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=84 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=85 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=86 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=87 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=88 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=89 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=90 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=91 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=92 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=93 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=94 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=95 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=96 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=97 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=98 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=99 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=100 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+SUMMARY PASS=100/100 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 100, 'w2': 0} mix={'recovery_mid_scan': 102, 'max_batch': 0, 'recovery_before_truncate': 99, 'recovery_after_truncate': 99} worlds={0: 100}
+Awaiting a response does not prove the engine was inside a write at kill time.
+Elapsed: 37.069 seconds
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ DB="$LAB/manual.db"
+
+bash -c 'echo "SERVER_PID=$$"; exec python3 -B -m src.serve "$1"' _ "$DB"
+SERVER_PID=113631
+READY keys=0 recovery_ms=4.554
+batch w1-1
+put round 1
+put status saved
+end
+ACK w1-1
+Killed
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ python3 ./kvdb open "$DB"
+python3 ./kvdb check "$DB"
+python3 ./kvdb dump "$DB"
+keys=2 recovery_ms=0.534
+OK
+round   1
+status  saved
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ python3 -B -m tests.bench_f3_kill --seed 84220
+seed=84220 extra_batches=3 kill_delay_ms=20.3 serve_exit=-9 write_s=3.0
+in_flight=w1-103 (not ACKed)
+open: keys=1040000 recovery_ms=571.145 (wall 614.9 ms, includes interpreter start)
+strict_recovery_under_2000_ms=True
+check: OK
+keys found=1040000 keys ACKed=1030000 missing ACKed=0 unexpected=0
+PASS
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ python3 -B tools/check_ps_half_batch.py \
+  --output "$LAB/evidence/half-batch"
+{
+  "status": "PASS",
+  "batch_ops": 10000,
+  "complete_operation_prefix": 5000,
+  "exact_prefix_bytes": 100016,
+  "full_frame_bytes": 200016,
+  "torn_file_bytes": 100066,
+  "child_exit": -9,
+  "child_stdout": "READY keys=1 recovery_ms=0.073\n",
+  "engine_recovery_ms": 5.2220369998394744,
+  "api_wall_ms": 5.232232999333064,
+  "partial_batch_visible": false,
+  "source_sha256": "deefac37f868c97bcb697b60570b38001c2d3ee5a7c63f7a1bcea1eddc10352b",
+  "instrumentation": "test-only prefix selector; real engine write and actual SIGKILL"
+}
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ python3 -B tools/run_ps_acceptance.py \
+  --data-dir "$LAB/evidence/full" \
+  --host-storage-dir /mnt/c \
+  --host-storage-dir /mnt/d \
+  --seed 84221 \
+  --f1-seed 84222
+PS_EVIDENCE=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Starting performance
+performance exit=0
+Starting build
+build exit=0
+Starting unit
+unit exit=0
+Starting contracts
+contracts exit=0
+Starting specific
+specific exit=0
+Starting half_batch
+half_batch exit=0
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+Crash campaigns running; evidence=/home/arsht/tmp_test/arsh-judging-gdhZIl/evidence/full/ps-acceptance-sq0emhm5
+PS_ACCEPTANCE_COMPLETE; noncompliance=["Prompt log empty"]
+arsht@WIN-RO2UQQ0R3FN:~/tmp_test/arsh-judging-gdhZIl/AltF4$ 

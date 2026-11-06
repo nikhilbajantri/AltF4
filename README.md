@@ -6,6 +6,10 @@ Crash-safe embedded key-value storage in Python. Linux/ext4; Python 3.10+ standa
 
 From the repository root: `make build`. Run regression tests with `make test`. Keep database/test files on real Linux storage, for example ~/tmp_test, not a RAM disk. See [the latest gap-fix report](docs/GAP_FIX_REPORT.md) and [offline plan](OFFLINE_TEST_PLAN.md) for measured results and remaining human checks.
 
+## Hands-on testing
+
+See [Arsh's measured manual rehearsal report](MANUAL_TEST_REPORT.md) for actual results and timing limits, and the [complete two-terminal command guide](docs/MANUAL_TEST_COMMANDS.md) for setup, commands, expected outputs and explanations.
+
 ## On-disk format (one-page specification)
 
 All integers are unsigned little endian. One authoritative append-only data file; the index is RAM-only. Lock and temporary files are auxiliary.
