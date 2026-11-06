@@ -1,0 +1,28 @@
+seed=12345 mode=default evidence=/home/arsht/tmp_test/demo-evidence-f8om2wag/torture/seed-12345-ahi040gv
+iteration=1 kill_ms=5.186 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=2 kill_ms=22.804 exit_wait_s=0.003 awaiting_response=['w1-3'] world=0 ACKs={'w1': 3, 'w2': 4} PASS
+iteration=3 kill_ms=10.424 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=4 kill_ms=134.371 exit_wait_s=0.001 awaiting_response=['w1-2'] world=0 ACKs={'w1': 2, 'w2': 3} PASS
+iteration=5 kill_ms=287.635 exit_wait_s=0.001 awaiting_response=['w1-14', 'w2-12'] world=0 ACKs={'w1': 13, 'w2': 12} PASS
+iteration=6 kill_ms=5.847 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=7 kill_ms=19.567 exit_wait_s=0.001 awaiting_response=['w1-3'] world=0 ACKs={'w1': 3, 'w2': 2} PASS
+iteration=8 kill_ms=18.065 exit_wait_s=0.001 awaiting_response=['w1-2', 'w2-1'] world=0 ACKs={'w1': 3, 'w2': 1} PASS
+iteration=9 kill_ms=818.350 exit_wait_s=0.001 awaiting_response=['w2-23', 'w1-20'] world=0 ACKs={'w1': 19, 'w2': 22} PASS
+iteration=10 kill_ms=2.388 exit_wait_s=0.001 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=11 kill_ms=416.600 exit_wait_s=0.001 awaiting_response=['w2-26'] world=0 ACKs={'w1': 25, 'w2': 25} PASS
+iteration=12 kill_ms=14.717 exit_wait_s=0.001 awaiting_response=['w2-1', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=13 kill_ms=39.009 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 4, 'w2': 6} PASS
+iteration=14 kill_ms=467.875 exit_wait_s=0.001 awaiting_response=['w1-32', 'w2-30'] world=0 ACKs={'w1': 31, 'w2': 30} PASS
+iteration=15 kill_ms=44.668 exit_wait_s=0.001 awaiting_response=['w2-3', 'w1-6'] world=0 ACKs={'w1': 6, 'w2': 3} PASS
+iteration=16 kill_ms=2.079 exit_wait_s=0.001 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS
+iteration=17 kill_ms=8.750 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS
+iteration=18 kill_ms=255.138 exit_wait_s=0.001 awaiting_response=['w1-2', 'w2-2'] world=0 ACKs={'w1': 2, 'w2': 2} PASS
+iteration=19 kill_ms=41.373 exit_wait_s=0.001 awaiting_response=['w1-5'] world=0 ACKs={'w1': 5, 'w2': 6} PASS
+iteration=20 kill_ms=40.469 exit_wait_s=0.001 awaiting_response=['w2-3', 'w1-3'] world=0 ACKs={'w1': 3, 'w2': 3} PASS
+iteration=21 kill_ms=30.545 exit_wait_s=0.001 awaiting_response=['w1-4', 'w2-2'] world=0 ACKs={'w1': 4, 'w2': 2} PASS
+iteration=22 kill_ms=7.871 exit_wait_s=0.001 awaiting_response=['w1-2'] world=0 ACKs={'w1': 3, 'w2': 1} PASS
+iteration=23 kill_ms=2.651 exit_wait_s=0.001 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+iteration=24 kill_ms=82.552 exit_wait_s=0.001 awaiting_response=['w2-2'] world=0 ACKs={'w1': 4, 'w2': 2} PASS
+iteration=25 kill_ms=2.251 exit_wait_s=0.001 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS
+SUMMARY PASS=25/25 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.003 kills_awaiting_response=96.0% ACKs={'w1': 137, 'w2': 129} mix={'batch': 112, 'ERR': 7, 'shared': 22, 'max_batch': 10000, 'put': 146, 'del': 49} worlds={0: 25}
+Awaiting a response does not prove the engine was inside a write at kill time.

@@ -1,0 +1,19 @@
+OUT SERVER_PID=668
+OUT READY keys=0 recovery_ms=2.969
+IN  put w1-1 color blue
+OUT ACK w1-1
+IN  get w1-2 color
+OUT VAL w1-2 blue
+IN  batch w1-3
+IN  put city Delhi
+IN  put status ready
+IN  end
+OUT ACK w1-3
+IN  put w1-4 obsolete temporary
+OUT ACK w1-4
+IN  del w1-5 obsolete
+OUT ACK w1-5
+IN  get w1-6 obsolete
+OUT NOTFOUND w1-6
+ACTION kill -KILL 668
+OBSERVED subprocess returncode=-9 (SIGKILL)

@@ -1,0 +1,25 @@
+{
+  "transcript": "/home/arsht/tmp_test/demo-evidence-f8om2wag/torture/seed-12345-ahi040gv/oracle.log.gz",
+  "sha256": "72321bf5984d14bb490efbd57358b2b75a020b17455db6b60e65386d7a7a2e76",
+  "compressed_bytes": 6227176,
+  "distinct_passing_rounds": 25,
+  "verified_kills_in_torture": 30,
+  "captured_text_sha256": {
+    "build.txt": "6fa418e2b5168736465db711a1777e71964fb1c1935b4bf62d73889e807abc93",
+    "manual_transcript.txt": "903976f7418023b4ea635d72890c3c22653ffb17a0832cb52389e912f67a9776",
+    "reopen.txt": "d6e63a894128f82adbe8777c594068328a49bf4028bcc6a06450058e2736bd2d",
+    "reopen_check.txt": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+    "reopen_dump.txt": "d9aad7b9803d00525f7467252ff0d06ddc1451304773adea69e096e8d54fd32d",
+    "reopen_get.txt": "08db2d3a72e164c281d036aa05b14a791573faf4ca85e8ca99fac607fc79d96d",
+    "reopen_open.txt": "40d7107f8ac48c7949116d4c01ea102828a292b6fa9ab8f5cc0ad64e0541adb5",
+    "repaired.txt": "f73b137e9932b5c4d8357e8b2a0ad7e85953f27326c173c2e29725782bce107f",
+    "repaired_check.txt": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+    "repaired_dump.txt": "d9aad7b9803d00525f7467252ff0d06ddc1451304773adea69e096e8d54fd32d",
+    "repaired_get.txt": "08db2d3a72e164c281d036aa05b14a791573faf4ca85e8ca99fac607fc79d96d",
+    "repaired_open.txt": "efbbf023561cd789f734af0b2ae442c49ea5e520ce0d79d5992fd57d7b476ae2",
+    "serve.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "torn_before_open.txt": "232b350af048f43413846e6f6968a3c664b30f7cdf2dcddbe956fb419001f9e1",
+    "torn_write.txt": "3358ac0ceba98ba238854efca617f50483f7d8b5237634a22bfe160bfb35924b",
+    "torture.txt": "f840ff3a6d8c6534b577918a20769ae8b383aea296efc58d622b8883a75f96ae"
+  }
+}
