@@ -9,6 +9,7 @@ import zlib
 
 from src import format as fmt
 from src.errors import CorruptError
+from tests.util import test_dir
 
 
 def roundtrip(test, ops):
@@ -68,7 +69,7 @@ class RoundTripTest(unittest.TestCase):
 
     def test_decode_from_mmap(self):
         frame, _ = fmt.encode_frame([("put", b"k", b"value")])
-        with tempfile.TemporaryFile() as f:
+        with tempfile.TemporaryFile(dir=test_dir()) as f:
             f.write(fmt.encode_header() + frame)
             f.flush()
             m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)

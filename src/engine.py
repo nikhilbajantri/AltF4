@@ -4,7 +4,8 @@ Owner: Nikhil
 
 Append-only log of CRC'd frames (src/format.py). Write order and recovery follow
 the README exactly. An in-memory index maps key -> (abs_value_offset, vlen);
-values are read back with os.pread.
+values are read back with os.pread. Compaction rewrites live keys to
+<path>.compact and renames it over <path> (README "Compaction").
 """
 
 import fcntl
@@ -53,14 +54,19 @@ def _remove(path):
         pass
 
 
+COMPACT_FRAME_PAYLOAD = 4 * 1024 * 1024
+AUTO_COMPACT_MIN_BYTES = 4 * 1024 * 1024
+
+
 def _op_size(key, vlen):
     return fmt.OP_HDR_SIZE + len(key) + vlen
 
 
 class KVDB:
-    def __init__(self, path, max_bytes=None):
+    def __init__(self, path, max_bytes=None, auto_compact=True):
         self.path = path
         self.max_bytes = max_bytes
+        self.auto_compact = auto_compact
         self._lock = threading.Lock()
         self._index = {}
         self._dead_bytes = 0
@@ -172,12 +178,20 @@ class KVDB:
             self._check_open()
             if self._poisoned:  # 4
                 raise PoisonedError("an earlier write or fsync failed")
-            self._check_space(len(frame), all(op[0] == "del" for op in ops))  # 5
+            delete_only = all(op[0] == "del" for op in ops)
+            try:
+                self._check_space(len(frame), delete_only)  # 5
+            except DiskFull:
+                if not self._dead_bytes:
+                    raise
+                self._compact_locked()  # E5: reclaim dead bytes, retry once
+                self._check_space(len(frame), delete_only)
             self._write(frame)  # 6, 7
             for op, rel in zip(ops, offsets):  # 8
                 is_put = op[0] == "put"
                 self._apply(is_put, op[1], self.end + rel, len(op[2]) if is_put else 0)
             self.end += len(frame)
+            self._maybe_auto_compact()
 
     def _check_space(self, frame_len, delete_only):
         if self.max_bytes is None:
@@ -227,8 +241,84 @@ class KVDB:
             self._check_open()
             return [(k, _pread_all(self._fd, n, off)) for k, (off, n) in self._index.items()]
 
+    # ---- compaction (README "Compaction"); caller holds self._lock ----
+
     def compact(self):
-        raise NotImplementedError("TODO M3: compaction")
+        with self._lock:
+            self._check_open()
+            if self._poisoned:
+                raise PoisonedError("an earlier write or fsync failed")
+            self._compact_locked()
+
+    def _maybe_auto_compact(self):
+        # P1: the frame is already committed, so a failed compaction must not
+        # turn the write into an error; the old file stays fully usable.
+        if (self.auto_compact and self.end > AUTO_COMPACT_MIN_BYTES
+                and self._dead_bytes > 0.5 * self.end):
+            try:
+                self._compact_locked()
+            except (DiskFull, OSError):
+                pass
+
+    def _compact_locked(self):
+        tmp = self.path + ".compact"
+        _remove(tmp)
+        fd = os.open(tmp, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o644)
+        try:
+            try:
+                new_index, new_end = self._copy_live(fd)
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+            crash.point("compact_before_rename")  # disk: old <path> + complete, durable .compact
+            os.replace(tmp, self.path)
+        except BaseException:
+            _remove(tmp)  # E4: old file, fd and index untouched
+            raise
+        crash.point("compact_after_rename")  # disk: <path> is the compacted file
+        try:
+            _fsync_dir(self.path)
+            new_fd = os.open(self.path, os.O_RDWR)
+        except BaseException:
+            # rename happened but cannot be made durable or reopened: our fd now
+            # points at the unlinked old inode, so further writes would be lost
+            self._poisoned = True
+            raise
+        os.close(self._fd)
+        self._fd, self._index, self.end, self._dead_bytes = new_fd, new_index, new_end, 0
+        crash.point("compact_after_swap")  # disk: compacted file, rename durable
+
+    def _copy_live(self, fd):
+        header = fmt.encode_header()
+        _pwrite_all(fd, header, 0)
+        pos = len(header)
+        keys = sorted(self._index)
+        new_index, ops, payload, copied, mid_hit = {}, [], fmt.NOPS_SIZE, 0, False
+        for i, key in enumerate(keys):
+            voff, vlen = self._index[key]
+            ops.append(("put", key, _pread_all(self._fd, vlen, voff)))
+            payload += _op_size(key, vlen)
+            last = i + 1 == len(keys)
+            if not last:
+                nkey = keys[i + 1]
+                nsize = _op_size(nkey, self._index[nkey][1])
+            if last or payload + nsize > COMPACT_FRAME_PAYLOAD or len(ops) == fmt.MAX_OPS:
+                pos = self._write_compact_frame(fd, ops, pos, new_index)
+                copied += len(ops)
+                ops, payload = [], fmt.NOPS_SIZE
+                if not mid_hit and 2 * copied >= len(keys):
+                    mid_hit = True
+                    crash.point("compact_mid_copy")  # disk: old <path> + partial .compact
+        return new_index, pos
+
+    def _write_compact_frame(self, fd, ops, pos, new_index):
+        frame, offsets = fmt.encode_frame(ops)
+        if self.max_bytes is not None and pos + len(frame) > self.max_bytes:
+            raise DiskFull("compacted file does not fit in max_bytes")
+        _pwrite_all(fd, frame, pos)
+        for (_, key, value), rel in zip(ops, offsets):
+            new_index[key] = (pos + rel, len(value))
+        return pos + len(frame)
 
     @property
     def stats(self):
