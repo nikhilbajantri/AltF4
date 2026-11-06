@@ -4,6 +4,8 @@
 
 ```mermaid
 flowchart TD
+  SERVE["serve stdin requests"] --> WORKERS["One worker/queue per writer; FIFO within each writer"]
+  WORKERS --> API
   API["Client API / CLI / stdin serve: put, delete, batch, get"] --> V["1. Validate operations; calculate full frame length"]
   V --> L["2. Acquire one per-handle mutex; reject poisoned handle"]
   L --> CAP["3. Disk-full guard: logical end + frame + 1-byte tail guard<br/>must fit max_bytes minus delete reserve; compact/retry once"]
@@ -36,6 +38,11 @@ flowchart TD
   DIR --> SWAP["Swap descriptor / index / logical end before next write"]
   SWAP --> DISK
   CAP -->|"dead bytes available"| COMPACT
+  CAP -->|"cannot fit after reclaim"| FULL["DISKFULL; rejected mutation is not appended"]
+  W -->|"I/O error"| ROLLBACK["Restore previous end + guard; fsync rollback; poison handle"]
+  G -->|"I/O error"| ROLLBACK
+  FS -->|"I/O error"| ROLLBACK
+  ROLLBACK -->|"rollback also fails"| UNCERTAIN["UNCERTAIN; reopen and reconcile; no ACK"]
 ```
 
 The source is diagrams/architecture.mmd. Historical PNGs are not the current diagram. Integers are little endian. CRC32 is an integrity check, not authentication. A full valid frame is the commit unit; the EOF guard is expendable padding, not a commit marker. It is overwritten at the next append, so it costs one byte per nonempty file, not per operation.
@@ -82,6 +89,8 @@ W, C and R refer to tests/test_crash_campaign.py: test_all_write_points_for_put_
 ## Part 3: Three guarantees
 
 **Durability.** Under the honest-fsync/process-kill model, _write loops on os.pwrite for the complete frame, writes the EOF guard, then calls os.fsync before _commit publishes the index and returns. serve prints ACK only afterward. Recovery replays the durable frame even if RAM publication or ACK transmission was interrupted. The expendable guard protects the literal one-byte-tail-loss case. A complete unsynced frame can also survive a process kill; that does not prove power-loss safety.
+
+If append or sync fails, the engine attempts to restore the previous end and guard, syncs the rollback, poisons the handle and raises an error. If rollback cannot be confirmed, it raises UncertainWriteError and serve reports UNCERTAIN without an ACK. The engine does not automatically retry that failed append.
 
 **Atomicity.** A batch is one length/CRC-checked frame. decode_frame validates the entire payload before replay. An incomplete frame is discarded as one unit, never partially applied. _commit and get/items use the same mutex, so a single read/snapshot cannot observe publication halfway through a batch. Operations inside a batch apply first to last: put X then delete X leaves X absent. Separate get calls are not a multi-key snapshot.
 

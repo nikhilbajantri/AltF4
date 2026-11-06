@@ -1,4 +1,6 @@
 flowchart TD
+  SERVE["serve stdin requests"] --> WORKERS["One worker/queue per writer; FIFO within each writer"]
+  WORKERS --> API
   API["Client API / CLI / stdin serve: put, delete, batch, get"] --> V["1. Validate operations; calculate full frame length"]
   V --> L["2. Acquire one per-handle mutex; reject poisoned handle"]
   L --> CAP["3. Disk-full guard: logical end + frame + 1-byte tail guard<br/>must fit max_bytes minus delete reserve; compact/retry once"]
@@ -31,3 +33,8 @@ flowchart TD
   DIR --> SWAP["Swap descriptor / index / logical end before next write"]
   SWAP --> DISK
   CAP -->|"dead bytes available"| COMPACT
+  CAP -->|"cannot fit after reclaim"| FULL["DISKFULL; rejected mutation is not appended"]
+  W -->|"I/O error"| ROLLBACK["Restore previous end + guard; fsync rollback; poison handle"]
+  G -->|"I/O error"| ROLLBACK
+  FS -->|"I/O error"| ROLLBACK
+  ROLLBACK -->|"rollback also fails"| UNCERTAIN["UNCERTAIN; reopen and reconcile; no ACK"]
