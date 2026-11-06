@@ -96,13 +96,15 @@ Serve uses one worker per operation-ID prefix. Accepted commands retain per-writ
 
 | Mode | Actual coverage |
 |---|---|
-| default | Two writers, private and shared keys, puts/deletes/batches through 10,000 operations, invalid requests, 2 ms to 1 s log-uniform kill delays; three crashes per database |
+| default | Two writers, private and shared keys, puts/deletes/batches through 10,000 operations, half of single and small-batch values 64-256 KiB, invalid requests, 2 ms to 1 s log-uniform kill delays; three crashes per database |
 | large-values | Two writers, a maximum-size 1 MiB value at the start of each stream, followed by 128 KiB values |
 | large-batch | Two writers, 10,000 operations at the start of each stream, followed by random 2..10,000-operation batches |
 | recovery-crash | Three consecutive kills during replay or tail repair; torn tails produced by the real torn_write hook |
 | compaction | Cycles four compaction crash hooks; every fifth round uses multiple output frames |
 | disk-full | Rejected puts and whole batches, successful reserve deletes, close crash, reclaiming space and writing again |
 | crashpoints | Cycles all 14 hooks; use at least 14 iterations for complete hook coverage |
+
+Writers per mode: default, large-values and large-batch run two concurrent stop-and-wait writers (w1, w2). compaction, recovery-crash and crashpoints intentionally use one writer at a time: each round must crash at an exact named hook on an exact hit (for example the third compaction, or the scan after a torn_write), and a second concurrent writer would make that hit count depend on thread scheduling. A write racing a compaction would also just wait on the engine lock, so it adds timing noise but no new disk state. Their fixture session (w1-base) finishes before the target session (w2-target) starts. disk-full currently also uses one writer (every op id is w1-*): its point is the exact order of rejected puts, the rejected batch and the reserve deletes, which a second writer would make depend on scheduling.
 
 The first three modes use random wall-clock delays and two stop-and-wait writers. Targeted modes use deterministic crash locations and report zero random delay; recovery/close crashes need not have a request awaiting a response. Default also forces a torn_write every fifth round, starting at round one, so omitted recovery truncation is observable even when random kills leave complete frames.
 
