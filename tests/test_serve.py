@@ -2,6 +2,7 @@
 
 import io
 import unittest
+import threading
 from unittest import mock
 
 from src.engine_fake import FakeKVDB
@@ -27,7 +28,7 @@ class ServeTests(unittest.TestCase):
     def test_invalid_input_does_not_end_session(self):
         lines = self.session("garbage\nput w1-1 hex:zz value\n"
                              "put w1-2 name Arsh\n")
-        self.assertEqual(lines[1:], ["ERR - INVALID", "ERR w1-1 INVALID",
+        self.assertCountEqual(lines[1:], ["ERR - INVALID", "ERR w1-1 INVALID",
                                      "ACK w1-2"])
 
     def test_binary_and_empty_values(self):
@@ -108,6 +109,31 @@ class ServeTests(unittest.TestCase):
                 main(["unused", "--fake", "--max-bytes", "0"])
             self.assertEqual(error.exception.code, 2)
             engine.assert_not_called()
+
+    def test_two_writers_enter_engine_concurrently(self):
+        barrier = threading.Barrier(2, timeout=3)
+        threads = set()
+        guard = threading.Lock()
+
+        class Engine(FakeKVDB):
+            def put(self, key, value):
+                with guard:
+                    threads.add(threading.current_thread().name)
+                barrier.wait()
+                super().put(key, value)
+
+        lines = self.session("put w1-1 a one\nput w2-1 b two\nquit\n", Engine("unused"))
+        self.assertCountEqual(lines[1:], ["ACK w1-1", "ACK w2-1"])
+        self.assertEqual(threads, {"serve-w1", "serve-w2"})
+
+    def test_each_writer_keeps_order_and_quit_drains_work(self):
+        commands = "".join("put %s-%d %s %d\n" % (w, n, w, n)
+                           for n in range(20) for w in ("w1", "w2"))
+        lines = self.session(commands + "get w1-20 w1\nget w2-20 w2\nquit\n")
+        for w in ("w1", "w2"):
+            self.assertEqual([line for line in lines if line.startswith("ACK " + w)],
+                             ["ACK %s-%d" % (w, n) for n in range(20)])
+            self.assertIn("VAL %s-20 19" % w, lines)
 
     def test_ack_is_written_only_after_engine_returns(self):
         events = []

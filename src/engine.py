@@ -31,6 +31,8 @@ def _pwrite_all(fd, data, offset):
     mv = memoryview(data)
     while mv:
         n = os.pwrite(fd, mv, offset)
+        if n <= 0:
+            raise OSError(5, "pwrite made no progress")
         mv = mv[n:]
         offset += n
 
