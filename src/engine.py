@@ -7,6 +7,7 @@ the README exactly. An in-memory index maps key -> (abs_value_offset, vlen);
 values are read back with os.pread.
 """
 
+import fcntl
 import mmap
 import os
 import threading
@@ -66,22 +67,46 @@ class KVDB:
         self._poisoned = False
         self._closed = False
         t0 = time.monotonic()
-        self._fd = self._open_file()
+        self._lock_fd = self._flock()
         try:
-            self.end = self._recover()
+            self._fd = self._open_file()
+            try:
+                self.end = self._recover()
+            except BaseException:
+                os.close(self._fd)
+                raise
         except BaseException:
-            os.close(self._fd)
+            os.close(self._lock_fd)
             raise
         self.recovery_ms = (time.monotonic() - t0) * 1000
 
-    # ---- open / recovery (README "Recovery" steps 2-7; flock comes later) ----
+    # ---- open / recovery (README "Recovery" steps 1-7) ----
+
+    def _flock(self):
+        fd = os.open(self.path + ".lock", os.O_RDWR | os.O_CREAT, 0o644)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            os.close(fd)
+            raise LockedError("%s is open in another KVDB" % self.path) from None
+        except BaseException:
+            os.close(fd)
+            raise
+        return fd
 
     def _open_file(self):
         _remove(self.path + ".compact")
         _remove(self.path + ".init")
-        if not os.path.exists(self.path):
+        if not os.path.exists(self.path) or self._is_header_prefix():
             self._create()
         return os.open(self.path, os.O_RDWR)
+
+    def _is_header_prefix(self):
+        # F4: a file shorter than the header that holds exactly the start of a
+        # valid header (incl. 0 bytes) is a header write that never finished.
+        with open(self.path, "rb") as f:
+            data = f.read(fmt.HEADER_SIZE)
+        return len(data) < fmt.HEADER_SIZE and data == fmt.encode_header()[:len(data)]
 
     def _create(self):
         init = self.path + ".init"
@@ -222,6 +247,7 @@ class KVDB:
             self._closed = True
             crash.point("close_mid")  # disk: every committed frame already durable
             os.close(self._fd)
+            os.close(self._lock_fd)  # releases the flock
 
     def _check_open(self):
         if self._closed:

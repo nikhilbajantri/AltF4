@@ -1,4 +1,10 @@
-"""Tests for src/engine.py. Owner: Varsha."""
+"""Tests for src/engine.py. Owner: Varsha.
+
+Databases are created under tempfile's default dir (normally /tmp). On many
+Linux setups /tmp is tmpfs (check with `df -T /tmp`), where fsync is nearly
+free, so timings here say nothing about ext4 durability cost. Crash-point
+tests use SIGKILL, which keeps the page cache, so they are valid on tmpfs too.
+"""
 
 import os
 import shutil
@@ -10,10 +16,11 @@ import tempfile
 import threading
 import unittest
 import zlib
+from unittest import mock
 
 from src import format as fmt
 from src.engine import KVDB
-from src.errors import CorruptError, DiskFull
+from src.errors import CorruptError, DiskFull, LockedError, PoisonedError
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -157,6 +164,105 @@ class DiskFullTest(EngineTestCase):
         with self.assertRaises(DiskFull):
             db.batch([("del", b"x%d" % i) for i in range(10)])  # 904 + 96 + 16 > 1000
         db.close()
+
+
+class ShortHeaderTest(EngineTestCase):
+    def test_header_truncated_by_one_byte_opens_empty(self):
+        KVDB(self.path).close()
+        os.truncate(self.path, fmt.HEADER_SIZE - 1)
+        db = KVDB(self.path)
+        self.assertEqual((db.stats["keys"], self.size()), (0, fmt.HEADER_SIZE))
+        db.put(b"a", b"1")
+        db = self.reopen(db)
+        self.assertEqual(db.get(b"a"), b"1")
+        db.close()
+
+    def test_zero_byte_file_opens_empty(self):
+        open(self.path, "wb").close()
+        db = KVDB(self.path)
+        self.assertEqual((db.stats["keys"], self.size()), (0, fmt.HEADER_SIZE))
+        db.close()
+
+    def test_random_short_file_is_corrupt(self):
+        data = b"\xff" + os.urandom(9)  # cannot be a header prefix: magic starts with "K"
+        with open(self.path, "wb") as f:
+            f.write(data)
+        with self.assertRaises(CorruptError):
+            KVDB(self.path)
+        with open(self.path, "rb") as f:
+            self.assertEqual(f.read(), data)
+
+
+class PoisonTest(EngineTestCase):
+    def check_poisoned(self, patch):
+        db = KVDB(self.path)
+        db.put(b"a", b"1")
+        before = self.size()
+        with patch:
+            with self.assertRaises(OSError):
+                db.put(b"b", b"x" * 100)
+        self.assertEqual(self.size(), before)
+        with self.assertRaises(PoisonedError):
+            db.put(b"c", b"3")
+        self.assertEqual((db.get(b"a"), db.get(b"b")), (b"1", None))
+        db = self.reopen(db)
+        self.assertEqual(dict(db.items()), {b"a": b"1"})
+        self.assertEqual(self.size(), before)
+        db.close()
+
+    def test_fsync_fails(self):
+        real, calls = os.fsync, []
+
+        def fsync(fd):
+            calls.append(fd)
+            if len(calls) == 1:
+                raise OSError(5, "injected EIO")
+            return real(fd)
+
+        self.check_poisoned(mock.patch("os.fsync", side_effect=fsync))
+
+    def test_pwrite_short_then_fails(self):
+        real, calls = os.pwrite, []
+
+        def pwrite(fd, data, offset):
+            calls.append(offset)
+            if len(calls) == 1:
+                return real(fd, bytes(data[:len(data) // 2]), offset)
+            raise OSError(28, "injected ENOSPC")
+
+        self.check_poisoned(mock.patch("os.pwrite", side_effect=pwrite))
+
+
+LOCK_HOLDER = r"""
+import sys, time
+from src.engine import KVDB
+db = KVDB(sys.argv[1])
+print("locked", flush=True)
+time.sleep(60)
+"""
+
+
+class FlockTest(EngineTestCase):
+    def test_second_open_is_locked(self):
+        db = KVDB(self.path)
+        with self.assertRaises(LockedError):
+            KVDB(self.path)
+        db.close()
+        KVDB(self.path).close()
+
+    def test_sigkilled_holder_releases_lock(self):
+        child = subprocess.Popen([sys.executable, "-c", LOCK_HOLDER, self.path],
+                                 cwd=ROOT, stdout=subprocess.PIPE)
+        try:
+            self.assertEqual(child.stdout.readline(), b"locked\n")
+            with self.assertRaises(LockedError):
+                KVDB(self.path)
+        finally:
+            child.kill()
+            child.wait()
+            child.stdout.close()
+        self.assertEqual(child.returncode, -signal.SIGKILL)
+        KVDB(self.path).close()
 
 
 CHILD = r"""
