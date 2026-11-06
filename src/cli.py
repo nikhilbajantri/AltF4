@@ -1,9 +1,26 @@
 """Command-line interface for the crash-safe key-value database."""
 import argparse
+import os
 import sys
 
 from src.errors import CorruptError, DiskFull, LockedError, PoisonedError
 from src.serve import decode_token, encode_token
+
+# These commands read an existing database; they must not create one.
+NEEDS_EXISTING = ("get", "del", "dump", "check", "inspect", "compact")
+
+
+def parse_batch_line(line):
+    """"put <key> <value>" (the value is the rest of the line, spaces kept) or "del <key>"."""
+    line = line.rstrip("\r\n")
+    if line.startswith("put "):
+        fields = line.split(" ", 2)
+        if len(fields) == 3:
+            return ("put", decode_token(fields[1]), decode_token(fields[2]))
+    fields = line.split()
+    if len(fields) == 2 and fields[0] == "del":
+        return ("del", decode_token(fields[1]))
+    raise ValueError("invalid batch line")
 
 
 def main(argv=None):
@@ -22,6 +39,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.max_bytes is not None and args.max_bytes < 16:
         parser.error("--max-bytes must be at least 16")
+    if args.command in NEEDS_EXISTING and not os.path.exists(args.path):
+        print("ERR not found")
+        return 1
     try:
         if args.command == "serve":
             from src.serve import main as serve_main
@@ -40,16 +60,8 @@ def main(argv=None):
         from src.engine import KVDB
         ops = None
         if args.command == "batch":
-            ops = []
             with open(args.file, encoding="utf-8") as source:
-                for line in source:
-                    fields = line.split()
-                    if len(fields) == 3 and fields[0] == "put":
-                        ops.append(("put", decode_token(fields[1]), decode_token(fields[2])))
-                    elif len(fields) == 2 and fields[0] == "del":
-                        ops.append(("del", decode_token(fields[1])))
-                    else:
-                        raise ValueError("invalid batch line")
+                ops = [parse_batch_line(line) for line in source if line.strip()]
             from src.format import validate_ops
             validate_ops(ops)
         db = KVDB(args.path, max_bytes=args.max_bytes)

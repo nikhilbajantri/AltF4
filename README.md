@@ -63,6 +63,8 @@ These add to the contracts above; none of them changes one.
 - Compaction frames: each PUT frame holds at most 4 MiB of payload and at most 10,000 ops (the batch limit).
 - CRC-valid but malformed frame (bad nops, unknown op type, bad klen/vlen, DEL with vlen != 0, payload not matching its length): this is not a torn write, so `open` raises CorruptError and truncates nothing. `check` reports `CORRUPT offset=<n> <reason>`. Only an incomplete frame or a CRC mismatch counts as a torn tail and is truncated.
 - `check` and `inspect` use the read-only scanner in `src/scan.py`. It takes no lock, never truncates and never creates files. `check` also reports CORRUPT if a CRC-valid frame exists within 1 MiB after the stop point (damage in the middle of the file, which `open` would otherwise truncate away).
+- CLI tokens: keys and values use the serve `hex:` rule in both directions. `get` and `dump` print a value as `hex:<bytes>` when it is empty, not UTF-8, or contains whitespace (so every `dump` line stays `key<TAB>value`). In a `batch` file, everything after `put <key> ` is the value, spaces included; blank lines are skipped.
+- `get`, `del`, `dump`, `check`, `inspect` and `compact` on a missing database print `ERR not found` (exit 1) and create nothing; `open`, `put`, `batch` and `serve` create the database.
 - Tests and benchmarks run in `$KVDB_TEST_DIR` or `~/tmp_test` (a real disk, never tmpfs `/tmp`).
 
 ## Measured (ext4 on NVMe, Arch Linux, Python 3.14)
