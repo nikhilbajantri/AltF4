@@ -32,3 +32,9 @@ Ubuntu-24.04 was reported Stopped, but starting it failed with ERROR_SHARING_VIO
 4. Complete the crash-here explanations from BREAKING.md. State that TTL/automatic expiry is not implemented in the current API; describe any extension as a design answer, not an existing feature.
 
 Only syntax and repository formatting checks were possible for the capture helper before this checkpoint. No new live demo or fresh test success is claimed by this preparation commit.
+
+## Completed after Windows restart
+
+Ubuntu started normally after the restart. Capture finished at 2026-11-06 22:22:56 IST on commit 5c2ed535fafaed659d3c82a15fc372a3af273091. Build passed; 25/25 rounds passed with zero tool errors/failures; both controlled demo kills returned SIGKILL and all recovered-state assertions passed. DEMO.md now contains actual results, two-terminal steps, crash-here answers and the current TTL scope. Small outputs/checksums are in docs/evidence/demo-2026-11-06; full evidence remains at /home/arsht/tmp_test/demo-evidence-f8om2wag.
+
+Earlier blocked and pending notes above record the pre-reboot checkpoint and are resolved for this capture.
