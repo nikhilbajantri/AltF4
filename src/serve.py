@@ -20,6 +20,21 @@ def decode_token(token):
     return token.encode("utf-8")
 
 
+def input_lines(stream):
+    """Decode each physical line independently, preserving invalid bytes for rejection."""
+    source = getattr(stream, "buffer", stream)
+    for line in source:
+        yield line.decode("utf-8", errors="surrogateescape") if isinstance(line, bytes) else line
+
+
+def valid_text(text):
+    try:
+        text.encode("utf-8")
+        return True
+    except UnicodeError:
+        return False
+
+
 def encode_token(value):
     """Keep binary, empty, or whitespace-containing values on one output line."""
     try:
@@ -45,6 +60,8 @@ def read_batch(lines):
         if invalid:
             continue
         try:
+            if not valid_text(line):
+                raise ValueError("invalid UTF-8")
             if len(ops) >= 10_000:
                 raise ValueError("too many operations")
             if len(parts) == 3 and parts[0] == "put":
@@ -130,18 +147,23 @@ def run(db, input_stream=None, output_stream=None):
             thread = threading.Thread(target=worker, args=(inbox,), name="serve-" + prefix)
             thread.start()
             workers[prefix] = (inbox, thread)
-        workers[prefix][0].put((parts, ops, invalid))
+        try:
+            workers[prefix][0].put_nowait((parts, ops, invalid))
+        except queue.Full:
+            reply("ERR %s BUSY" % op_id)
 
     try:
         stats = db.stats
         reply("READY keys=%d recovery_ms=%.3f" %
               (stats["keys"], stats["recovery_ms"]))
-        lines = iter(input_stream)
+        lines = iter(input_lines(input_stream))
         for line in lines:
             parts = line.split()
             if parts == ["quit"]:
                 break
-            ops, invalid = None, False
+            ops, invalid = None, not valid_text(line)
+            if len(parts) > 1 and not valid_text(parts[1]):
+                parts[1] = "-"
             try:
                 if parts and parts[0] == "batch":
                     ops = read_batch(lines)

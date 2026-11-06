@@ -291,6 +291,7 @@ class CrashCampaignTests(unittest.TestCase):
                     shutil.copytree(ROOT / package, sandbox / package,
                                     ignore=shutil.ignore_patterns("__pycache__"))
                 shutil.copy2(ROOT / "torture", sandbox / "torture")
+                shutil.copy2(ROOT / "kvdb", sandbox / "kvdb")
                 env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
                 env.pop("KVDB_CRASH", None)
                 if bug == "skip-truncation":
