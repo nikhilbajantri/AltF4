@@ -6,6 +6,8 @@ Use --fake to practise without the Linux storage engine.
 
 import argparse
 import sys
+import queue
+import threading
 
 from src.errors import CorruptError, DiskFull, LockedError, PoisonedError
 from src.format import validate_ops
@@ -62,9 +64,73 @@ def run(db, input_stream=None, output_stream=None):
     """Run one session using an already-open engine (real or fake)."""
     input_stream = sys.stdin if input_stream is None else input_stream
     output_stream = sys.stdout if output_stream is None else output_stream
+    output_lock = threading.Lock()
+    workers = {}
 
     def reply(message):
-        print(message, file=output_stream, flush=True)
+        with output_lock:
+            print(message, file=output_stream, flush=True)
+
+    def execute(parts, ops, invalid):
+        op_id = parts[1] if len(parts) > 1 else "-"
+        try:
+            if invalid:
+                raise ValueError("invalid command")
+            command = parts[0] if parts else ""
+            if command == "batch" and len(parts) == 2:
+                db.batch(ops)
+            elif command == "put" and len(parts) == 4:
+                db.put(decode_token(parts[2]), decode_token(parts[3]))
+            elif command == "del" and len(parts) == 3:
+                db.delete(decode_token(parts[2]))
+            elif command == "compact" and len(parts) == 2:
+                db.compact()
+            elif command == "get" and len(parts) == 3:
+                value = db.get(decode_token(parts[2]))
+                reply("NOTFOUND " + op_id if value is None else
+                      "VAL %s %s" % (op_id, encode_token(value)))
+                return
+            else:
+                raise ValueError("invalid command")
+            # The engine returned successfully before any ACK is emitted.
+            from src import crash
+            crash.point("after_return")
+            reply("ACK " + op_id)
+        except ValueError:
+            reply("ERR %s INVALID" % op_id)
+        except DiskFull:
+            reply("ERR %s DISKFULL" % op_id)
+        except PoisonedError:
+            reply("ERR %s POISONED" % op_id)
+        except OSError:
+            reply("ERR %s IO" % op_id)
+        except NotImplementedError:
+            reply("ERR %s UNSUPPORTED" % op_id)
+
+    def worker(inbox):
+        while True:
+            job = inbox.get()
+            if job is None:
+                return
+            try:
+                execute(*job)
+            except Exception:
+                # A bad request must not silently kill a worker and strand its queue.
+                parts = job[0]
+                reply("ERR %s INTERNAL" % (parts[1] if len(parts) > 1 else "-"))
+
+    def dispatch(parts, ops, invalid):
+        op_id = parts[1] if len(parts) > 1 else "-"
+        prefix = op_id.split("-", 1)[0]
+        if prefix not in workers:
+            if len(workers) >= 64:
+                reply("ERR %s INVALID" % op_id)
+                return
+            inbox = queue.Queue(maxsize=64)
+            thread = threading.Thread(target=worker, args=(inbox,), name="serve-" + prefix)
+            thread.start()
+            workers[prefix] = (inbox, thread)
+        workers[prefix][0].put((parts, ops, invalid))
 
     try:
         stats = db.stats
@@ -75,45 +141,21 @@ def run(db, input_stream=None, output_stream=None):
             parts = line.split()
             if parts == ["quit"]:
                 break
-            op_id = parts[1] if len(parts) > 1 else "-"
+            ops, invalid = None, False
             try:
                 if parts and parts[0] == "batch":
                     ops = read_batch(lines)
                     if len(parts) != 2:
                         raise ValueError("batch requires one operation id")
-                    # One engine call makes the entire group one operation.
-                    db.batch(ops)
-                    reply("ACK " + op_id)
-                elif len(parts) == 4 and parts[0] == "put":
-                    key, value = decode_token(parts[2]), decode_token(parts[3])
-                    db.put(key, value)
-                    # Never acknowledge before the engine returns successfully.
-                    reply("ACK " + op_id)
-                elif len(parts) == 3 and parts[0] == "del":
-                    db.delete(decode_token(parts[2]))
-                    reply("ACK " + op_id)
-                elif len(parts) == 2 and parts[0] == "compact":
-                    db.compact()
-                    reply("ACK " + op_id)
-                elif len(parts) == 3 and parts[0] == "get":
-                    value = db.get(decode_token(parts[2]))
-                    if value is None:
-                        reply("NOTFOUND " + op_id)
-                    else:
-                        reply("VAL %s %s" % (op_id, encode_token(value)))
-                else:
-                    reply("ERR %s INVALID" % op_id)
             except ValueError:
-                reply("ERR %s INVALID" % op_id)
-            except DiskFull:
-                reply("ERR %s DISKFULL" % op_id)
-            except PoisonedError:
-                reply("ERR %s POISONED" % op_id)
-            except OSError:
-                reply("ERR %s IO" % op_id)
-            except NotImplementedError:
-                reply("ERR %s UNSUPPORTED" % op_id)
+                invalid = True
+            dispatch(parts, ops, invalid)
     finally:
+        # FIFO sentinels let queued requests finish before descriptors are closed.
+        for inbox, thread in workers.values():
+            inbox.put(None)
+        for inbox, thread in workers.values():
+            thread.join()
         db.close()
 
 

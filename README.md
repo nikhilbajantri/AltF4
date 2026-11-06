@@ -81,3 +81,23 @@ Nikhil: engine, format, crash points. Arsh: serve + torture. Srushti: CLI, inspe
 
 ## Layout note
 The torture harness package lives in `torturelib/` (runner.py, oracle.py, workload.py) because `./torture` is the executable entry point and a file and directory cannot share that name.
+
+## Arsh milestone: concurrent serve and first crash runner
+
+Run from the repository root in Ubuntu/WSL:
+
+    python3 -m src.serve practice.db
+    python3 ./torture --iterations 25 --seed 12345
+
+Serve routes each operation ID prefix (before the first hyphen) to a separate worker. Commands from one writer retain input order; responses from different writers may interleave. Stop-and-wait clients must wait for their operation response before sending the next operation. Responses are printed and flushed under one output lock. EOF and quit drain queued work before closing the engine. There are at most 64 worker prefixes, with queues bounded to 64 pending commands per worker. The after_return crash point fires after a successful mutation returns and before its ACK.
+
+The current runner covers two stop-and-wait writers using separate key namespaces, random puts/deletes/small batches, seeded operation plans and kill delays, real SIGKILL, reopen, check, and exact dump comparison. At most one unanswered operation per writer produces at most four allowed worlds. Values contain operation IDs and deterministic SHA-256 filler. Every run uses fresh databases and preserves SENT/response/kill evidence in oracle.log under a unique run directory, printed at startup (default: ~/tmp_test/torture_data, inside Linux). Failures return exit code 1; tool errors stop with TOOL ERROR and exit code 2. Reusing a seed reproduces the planned streams and kill delays; OS scheduling means the number of sent or acknowledged operations can differ.
+
+The top-level CLI remains a stub, so the runner temporarily launches src.serve directly and uses torturelib.crash_probe as its separate open/check/dump adapter. The runner, workload generator, and expected-state oracle never import storage code. Only the adapter imports the engine/scanner to perform recovery and export the actual state.
+
+Still pending: shared-key ordering, 1 MB values, 10,000-op crash workloads, recovery-crash/compaction/disk-full/crashpoints modes, repeated crashes on one database, full seven-mode 500-round release qualification. The current default workload is a first milestone, not the complete PRD torture suite. A request awaiting a response at kill time is not proof that the engine was executing a disk write then. SIGKILL tests process crashes; they do not simulate power loss. Functional checks run from the mounted Windows source folder; test databases for manual runner executions default to the Linux filesystem, and these results are not performance measurements.
+
+
+## Major crash campaign
+
+See [CRASH_TEST_REPORT.md](CRASH_TEST_REPORT.md) for verified results, failures found, evidence paths, limitations, and rerun commands. Targeted coverage is available with: python3 -B -m unittest tests.test_crash_campaign -v.
