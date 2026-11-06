@@ -1,0 +1,12 @@
+Fix: 2a9c3c3
+test_completed_before_next_send_forces_order (tests.test_shared_batches.SharedBatchTests.test_completed_before_next_send_forces_order) ... ok
+test_delete_order_and_initial_state (tests.test_shared_batches.SharedBatchTests.test_delete_order_and_initial_state) ... ok
+test_mixed_batch_result_is_rejected (tests.test_shared_batches.SharedBatchTests.test_mixed_batch_result_is_rejected) ... ok
+test_pending_batch_is_wholly_optional_and_errors_absent (tests.test_shared_batches.SharedBatchTests.test_pending_batch_is_wholly_optional_and_errors_absent) ... ok
+test_small_histories_agree_with_exhaustive_reference (tests.test_shared_batches.SharedBatchTests.test_small_histories_agree_with_exhaustive_reference) ... ok
+test_valid_overlapping_batches_accept_either_whole_batch (tests.test_shared_batches.SharedBatchTests.test_valid_overlapping_batches_accept_either_whole_batch) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.032s
+
+OK

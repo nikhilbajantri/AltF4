@@ -15,12 +15,18 @@ def generate(seed, iteration, writer, count=100, mode="default"):
             size = 10_000 if number == 0 else rng.randint(2, 10_000)
         else:
             size = rng.choice([2, 5, 32, 256, 10_000]) if rng.random() < .25 else 1
+        if mode == "default" and number == 0:
+            size = 4
         if mode == "large-values":
             size = 1
         for item in range(size):
             key = (writer + "/" + str(rng.randrange(32))).encode()
-            if size == 1 and number % 9 == 4:
+            if number == 0 and item < min(size, 4):
+                key = ("shared/batch%d" % item).encode()
+            elif size == 1 and number % 9 == 4:
                 key = b"shared/status"
+            elif size > 1 and item < 4 and number % 3 == 0:
+                key = ("shared/batch%d" % item).encode()
             if size == 1 and number % 17 == 7:
                 key = b""
             if mode != "large-values" and rng.random() < .2:

@@ -1,5 +1,7 @@
 """Seven crash modes with transcript-based expected state and public CLI checks."""
 import argparse
+import gzip
+import shutil
 from collections import Counter
 import json
 import os
@@ -213,11 +215,18 @@ def main(argv=None):
     parser.add_argument("--iterations", type=int, default=25)
     parser.add_argument("--mode", choices=["default", "large-values", "large-batch", "recovery-crash", "compaction", "disk-full", "crashpoints"], default="default")
     parser.add_argument("--data-dir", type=Path, default=Path.home() / "tmp_test" / "torture_data")
+    parser.add_argument("--compress-log", action="store_true", help="store the complete transcript as oracle.log.gz")
+    parser.add_argument("--host-storage-dir", type=Path, action="append", default=[],
+                        help="also check the physical host volume, e.g. /mnt/d for a WSL disk on D:")
+    parser.add_argument("--min-free-gib", type=float, default=2,
+                        help="stop before a round if a checked volume has less free space")
     args = parser.parse_args(argv)
     if not sys.platform.startswith("linux"):
         parser.error("run this tool in Ubuntu/WSL, using the real engine")
     if args.iterations < 1:
         parser.error("--iterations must be positive")
+    if not 0 < args.min_free_gib < float("inf"):
+        parser.error("--min-free-gib must be positive and finite")
     args.data_dir.mkdir(parents=True, exist_ok=True)
     directory = Path(tempfile.mkdtemp(prefix="seed-%s-" % args.seed, dir=args.data_dir))
     print("seed=%s mode=%s evidence=%s" % (args.seed, args.mode, directory), flush=True)
@@ -225,9 +234,16 @@ def main(argv=None):
     flying = passed = tool_errors = 0
     max_wait = 0.
     previous = {}
-    with open(directory / "oracle.log", "w", encoding="utf-8") as log:
+    opener = gzip.open if args.compress_log else open
+    log_name = "oracle.log.gz" if args.compress_log else "oracle.log"
+    with opener(directory / log_name, "wt", encoding="utf-8") as log:
         for number in range(1, args.iterations + 1):
             try:
+                for volume in [directory, *args.host_storage_dir]:
+                    free = shutil.disk_usage(volume).free
+                    if free < args.min_free_gib * 1024**3:
+                        raise ToolError("low free space on %s: %.2f GiB; reserve %.2f GiB" %
+                                        (volume, free / 1024**3, args.min_free_gib))
                 if args.mode in ("default", "large-values", "large-batch"):
                     initial = previous if args.mode == "default" and (number - 1) % 3 else {}
                     result = iteration(args.seed, number, directory, log, args.mode, initial)
