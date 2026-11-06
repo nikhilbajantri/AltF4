@@ -1,45 +1,54 @@
 # How I would break this
 
-## 1. Crash points table
+## Crash points
+All 14 hooks are exercised by `--mode crashpoints` with at least 14 iterations and by the targeted regression campaign. Campaign counts and evidence are in `CRASH_TEST_REPORT.md`; current issue verification is in `docs/review_fixes.md`.
 
-All locations below are under src/. The frame is the commit unit; the optional final 00 byte is expendable padding. Named hooks kill the process with SIGKILL. See docs/GAP_FIX_REPORT.md for seeds and counts.
+| Point | Disk state at interruption | Recovery result | Where in code |
+|---|---|---|---|
+| `init_before_rename` | Complete, synced `.init`; database path not replaced | Open removes stale `.init` and creates the database again | `src/engine.py:_create` |
+| `before_write` | Previous frames and their EOF guard | New operation is absent | `src/engine.py:_write` |
+| `torn_write` | Previous frames and an incomplete frame prefix written over the old guard | Recovery truncates the torn tail, restores the guard and preserves earlier frames | `src/engine.py:_write`, `src/engine.py:_recover` |
+| `after_write` | Complete frame and its guard may be in the page cache but are not synced | Process-crash recovery replays a complete frame with a valid CRC; power-loss behavior is untested | `src/engine.py:_write` |
+| `after_fsync` | Durable frame; index not yet updated | Recovery replays the complete operation | `src/engine.py:_write`, `src/engine.py:_scan` |
+| `after_return` | Engine returned; ACK not yet printed | The operation is durable, but the caller has no ACK | `src/serve.py:execute` |
+| `recovery_mid_scan` | Original file unchanged | Next open repeats the scan | `src/engine.py:_scan` |
+| `recovery_before_truncate` | Torn tail still present | Next open repeats the repair | `src/engine.py:_recover` |
+| `recovery_after_truncate` | Tail removed, guard restored and file synced | Next open scans the valid prefix | `src/engine.py:_recover` |
+| `compact_mid_copy` | Old authoritative file and partial temporary file | Open uses the old file and removes the temporary file | `src/engine.py:_copy_live` |
+| `compact_before_rename` | Old file and complete, synced temporary file | Open uses the old file and removes the temporary file | `src/engine.py:_compact_locked` |
+| `compact_after_rename` | Database path names the complete compacted file; directory sync has not run | Open recovers the file at the database path | `src/engine.py:_compact_locked` |
+| `compact_after_swap` | New file installed and directory synced | Open recovers the new file; later writes use its descriptor | `src/engine.py:_compact_locked` |
+| `close_mid` | Every acknowledged frame is already durable | Recovery reads the committed frames; close writes nothing | `src/engine.py:close` |
 
-| Hook and exact function | Disk at kill | Next open |
-|---|---|---|
-| init_before_rename: engine._create | Synced .init, no authoritative path yet | Remove temp; create header again |
-| before_write: engine._write | Prior frames and guard | New operation absent |
-| torn_write: engine._write | Incomplete frame overwrote old guard | Drop incomplete tail; restore guard |
-| after_write: engine._write | Complete frame plus guard; not synced | Replay full CRC-valid frame |
-| after_fsync: engine._write | Frame and guard synced; RAM stale | Rebuild index; include operation |
-| after_return: serve.run/execute | Engine returned; ACK not printed | Include durable operation |
-| recovery_mid_scan: engine._scan | File unchanged; RAM incomplete | Restart replay |
-| recovery_before_truncate: engine._recover | Torn tail remains | Repeat repair |
-| recovery_after_truncate: engine._recover | Valid prefix and guard synced | Replay clean file |
-| compact_mid_copy: engine._copy_live | Old authority plus partial temp | Use old file; remove temp |
-| compact_before_rename: engine._compact_locked | Old file plus synced new temp | Use old file; remove temp |
-| compact_after_rename: engine._compact_locked | Path names complete new file | Recover new file |
-| compact_after_swap: engine._compact_locked | New file/directory synced; handle swapped | Recover new file; append to it |
-| close_mid: engine.close | Accepted frames already durable | Recover without close cleanup |
+If append and rollback both fail, the server returns `UNCERTAIN` and the handle refuses further mutations. Recovery may include a complete frame from that operation; callers reconcile the result. Evidence: `docs/uncertain_write_report.md`.
 
-## 2. Ordering argument
+An `fsync` error is an injected I/O-failure test, not a fifteenth SIGKILL hook. The engine attempts rollback and poisons the handle so later writes cannot be acknowledged.
 
-Under the process-death model, os.pwrite loops until the frame is complete, then writes one EOF guard; os.fsync returns before index publication, engine success and serve ACK. The next append overwrites the guard, not earlier frame bytes. A partial frame is discarded as a whole. Removing one trailing byte from an acknowledged file removes only the guard. The guard is not a commit marker.
 
 Recovery uses os.ftruncate, restores the guard when space permits, then os.fsync. Compaction copies live data and guard, fsyncs/closes the temp, calls os.replace, fsyncs the parent directory, then reopens/swaps the descriptor and index. Directory fsync also follows initial-file replacement. Atomic rename is assumed on the tested Linux ext4 filesystem.
 
-On append failure, rollback truncates the attempted append, restores the old guard and syncs. The handle is poisoned. Failed rollback reports UNCERTAIN: reopen and reconcile before retrying; absence is not promised.
+A normal append follows `os.pwrite` through `_pwrite_all()` → `os.fsync(fd)` → index update → engine return → server ACK. Large frames are written in chunks of up to 4 MiB. An ACK therefore follows a successful file sync.
 
-## 3. Known weaknesses
+If a write or sync fails, the engine calls `ftruncate` to restore the previous end, rewrites the previous EOF guard and then calls `fsync` for the rollback. It poisons the handle and raises an error. If rollback also fails, it returns `UncertainWriteError` as `ERR <id> UNCERTAIN`. The failed write is not retried.
 
-1. Replay is O(log size). Million-record measurements pass on this laptop, but a sufficiently long log, slower storage or different CPU load can exceed two seconds.
-2. One mutex blocks readers/writers during compaction. Encoding is chunked, but retained input values, queued batches and the index still consume RAM. The 10,000 distinct 1 MiB value combination is not qualified.
-3. Evidence covers process kills on ext4, not power loss, lying hardware, NTFS or arbitrary middle-file damage. CRC32 is not cryptographic authentication.
-4. Legacy files at a cap with no spare byte remain readable without migration growth. Their unguarded tails need room and a current write/compaction before the guard guarantee applies. Older engines can remove the guard.
-5. OS scheduling is not reproduced exactly by a seed. Full transcripts and deterministic hooks supplement seeded plans. The exact shared-batch oracle has a 250,000-state budget; exhaustion is a tool error, never PASS.
+Appending does not change the database directory entry; syncing the database file covers its contents and size. Compaction changes the directory entry, so it syncs `.compact`, calls `os.replace`, then syncs the parent directory. A complete frame after `after_write` can survive SIGKILL because the kernel page cache remains available; a power cut can lose unsynced data. Power-cut behavior is not tested.
+## Known weaknesses
 
-## 4. What we tried that failed
-
-A zero-progress pwrite once hung the engine; a progress guard now rejects it. Early-ACK and partial-batch planted defects are detected by negative regressions. Skipped tail truncation previously escaped random kills; deliberate torn-write trials now expose it. Invalid UTF-8 once killed serve; malformed lines now get errors. The literal one-byte test previously lost acknowledged data; the EOF guard fixes that without accepting partial frames. A test also incorrectly required global reply order across writers; it now checks exact responses without that unsupported order. Raw pre-fix evidence is retained.
+1. Tests do not simulate physical power cuts, storage firmware faults, or arbitrary middle-file bit rot. CRC32 detects accidental damage, not deliberate tampering.
+2. Compaction holds the global lock while copying live data; at 1M live keys this takes about 2.5 seconds. The index also uses RAM per key.
+3. `check` can report a false positive when a value contains bytes that resemble a valid frame. The `.lock` file is deliberately never deleted. Rename atomicity has been verified only on ext4.
+4. The shared-batch oracle has a 250,000-state search budget; pathological histories return a tool error without a verdict. Mutation histories are checked; general read-linearizability is not covered.
+5. Input and queued work still use RAM. Encoding memory changed from 80.1 MiB to 8.1 MiB; see `docs/batch_memory_review.md`.
+6. Legacy files already at a `max_bytes` cap have no spare byte for the EOF guard. They stay readable, but until room is made and a current write or compaction succeeds, removing their last byte still loses the last record. Older engines may also remove the guard.
+   
+## Failures found and detector trials
+- Zero-progress `pwrite` hung the engine. Commit `aa46909` added a progress guard and regression coverage.
+- Default random kills missed skipped truncation. Review R-04 added deliberate torn-write trials; seed `12345` detects the planted omission at iteration 1.
+- A slow exit after SIGKILL caused a TOOL ERROR at iteration 116 after the old 5-second wait. Commit `09e69ec` raised the wait to 60 seconds and lets the run continue past tool errors.
+- The WSL disk filled during the 7,000-round gate. Commit `4bc6000` added a free-space check.
+- Coverage was 71%; coverage tuning raised it to 84%. Commit `b4bd0be` records the change.
+- PR #16 reported duplicate dump output.
+- Issue #17 records CLI gaps.
 
 ## 5. If we had 24 more hours
 
