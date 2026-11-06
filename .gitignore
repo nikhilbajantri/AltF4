@@ -1,0 +1,8 @@
+*.db
+*.compact
+*.init
+*.lock
+__pycache__/
+*.pyc
+torture_data/
+tmp_test/

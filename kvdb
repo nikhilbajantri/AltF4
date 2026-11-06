@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""./kvdb entry point. Owner: Srushti."""
+from src.cli import main
+
+if __name__ == "__main__":
+    main()

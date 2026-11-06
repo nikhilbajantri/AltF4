@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""./torture entry point. Owner: Arsh."""
+from torturelib.runner import main
+
+if __name__ == "__main__":
+    main()
