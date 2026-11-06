@@ -30,7 +30,7 @@ flowchart TD
 ```
 
 ## Part 2 Proof table
-| B1 | Crash during a 10-operation batch write | Previous frames and possibly a partial final frame | Recovery checks the frame and should discard an incomplete tail | `_write()`; `_recover()`; `_scan()`; `fmt.decode_frame()` | Not verified |
+| B1 | Crash during a 10-operation batch write | Previous saved data and possibly part of the new batch are on disk | Recovery should remove the incomplete ending | `_write()` and `_recover()` | Not verified |
 | B2 | Repeat the torn batch-write test | Previous frames and possibly a partial final frame | Reopening should recover valid earlier frames and handle the incomplete tail | `_write()`; `_recover()`; `_scan()` | Not verified |
 | B5 | Batch deletes X, puts X, then deletes X | A complete batch frame is on disk | Operations apply first to last, so X should be absent | `_commit()`; `_apply()`; `_scan()` | Not verified |
 | C1 | Crash at `compact_before_rename` | Old database file plus a complete `.compact` file | The old database remains at the database path; reopening removes the leftover `.compact` file | `_compact_locked()`; `_open_file()`; `os.replace()` | Not verified |
