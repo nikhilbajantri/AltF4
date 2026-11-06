@@ -31,7 +31,7 @@ Validation precedes frame writing; the complete frame is synced before index pub
 
 1. No physical power cut, storage firmware fault, or arbitrary middle-file bit rot is simulated. CRC32 detects accidental damage, not deliberate tampering.
 2. Compaction holds the global lock while copying live data; readers and writers pause for its duration. Benchmark this on the demo laptop.
-3. The shared-key oracle is intentionally restricted to single-operation writes/deletes on shared/status; arbitrary shared multi-key batches need a broader serializability checker.
+3. The exact shared-batch oracle has a 250,000-state search budget; pathological histories produce a tool error without a verdict. Mutation histories are checked; general read-linearizability is not covered.
 4. Random timing and thread scheduling vary even with a fixed seed. Full command transcripts and named crash hooks support reproduction.
 
 ## Failures found and detector trials
@@ -45,5 +45,5 @@ Validation precedes frame writing; the complete frame is synced before index pub
 ## Next priorities
 
 1. Run the full 500-round-per-mode qualification on the final demo checkout.
-2. Extend shared-key checking to general overlapping batches before claiming that coverage.
+2. Compare exact shared-batch checks with independent reference cases and retain search-budget failures as qualification failures.
 3. Rehearse crash-here answers against the final code and verify clean-clone/offline operation.
