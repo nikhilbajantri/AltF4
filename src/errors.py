@@ -23,3 +23,12 @@ class CorruptError(Exception):
         super().__init__("offset %d: %s" % (offset, reason))
         self.offset = offset
         self.reason = reason
+
+
+class UncertainWriteError(OSError):
+    """Append failed and rollback could not be confirmed; reopen and reconcile."""
+
+    def __init__(self, write_error, rollback_error):
+        super().__init__("write outcome uncertain: rollback failed")
+        self.write_error = write_error
+        self.rollback_error = rollback_error

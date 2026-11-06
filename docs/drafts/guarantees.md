@@ -7,8 +7,8 @@ Draft written by Nikhil from the code at commit 686bbbb plus the uncommitted tor
 An operation is durable before anyone is told it succeeded.
 
 1. `KVDB.put` / `delete` / `batch` all call `KVDB._commit` (lines 168-196).
-2. `_commit` builds the whole frame with `format.encode_frame` (line 178) before it takes `self._lock` (line 179).
-3. Inside the lock, `KVDB._write` (lines 205-223) calls `os.pwrite` through `_pwrite_all` (lines 30-37). `_pwrite_all` loops until every byte is written and raises `OSError` if a call makes no progress.
+2. `_commit` validates and calculates the encoded size without materializing the payload. Under `self._lock`, it rejects poisoned handles and checks the database cap before calling `format.prepare_frame`. Small frames use the existing encoder; large frames use immutable parts and bounded chunks. Line numbers below describe the earlier baseline; see docs/batch_memory_review.md for this follow-up.
+3. Inside the lock, `KVDB._write` calls `os.pwrite` through `_pwrite_all`, which handles a large frame in bounded chunks. `_pwrite_all` loops until every byte is written and raises `OSError` if a call makes no progress.
 4. `_write` then calls `os.fsync(self._fd)` (line 214).
 5. Only after `_write` returns does `_commit` update the in-memory index and `self.end` (lines 192-195). Then the lock is released and the method returns.
 6. In `src/serve.py` `run.execute`, `reply("ACK " + op_id)` runs only after `db.put` / `db.delete` / `db.batch` / `db.compact` returned. `reply` uses `print(..., flush=True)`.
@@ -21,7 +21,7 @@ The file's own directory entry is made durable once, when the file is created, b
 - `os.replace(<path>.init, <path>)`;
 - `_fsync_dir` (lines 22-27): `os.open(dir, O_RDONLY|O_DIRECTORY)` + `os.fsync`.
 
-If `pwrite` or `fsync` fails, `_write` calls `os.ftruncate(fd, self.end)` + `os.fsync`, sets `self._poisoned`, and re-raises. It never retries `fsync`. Every later write raises `PoisonedError` (line 182), so a write after a failed `fsync` can never be acknowledged.
+If `pwrite` or `fsync` fails, `_write` calls `os.ftruncate(fd, self.end)` + `os.fsync`, sets `self._poisoned`, and re-raises. If rollback truncation or its synchronization also fails, `UncertainWriteError` retains both errors and the public response is `UNCERTAIN`: the operation may be replayed after reopen. A caller must reconcile that outcome before retrying. An append failure with confirmed rollback remains `IO`. It never retries the failed append `fsync`. Every later write raises `PoisonedError` (line 182), so a write after a failed `fsync` can never be acknowledged.
 
 The limit of this claim: it rests on Linux `fsync(2)` semantics on ext4. It has been tested only with SIGKILL, never with a power cut.
 

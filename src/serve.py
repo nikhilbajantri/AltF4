@@ -9,7 +9,7 @@ import sys
 import queue
 import threading
 
-from src.errors import CorruptError, DiskFull, LockedError, PoisonedError
+from src.errors import CorruptError, DiskFull, LockedError, PoisonedError, UncertainWriteError
 from src.format import validate_ops
 
 
@@ -119,6 +119,8 @@ def run(db, input_stream=None, output_stream=None):
             reply("ERR %s DISKFULL" % op_id)
         except PoisonedError:
             reply("ERR %s POISONED" % op_id)
+        except UncertainWriteError:
+            reply("ERR %s UNCERTAIN" % op_id)
         except OSError:
             reply("ERR %s IO" % op_id)
         except NotImplementedError:

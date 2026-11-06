@@ -1,0 +1,33 @@
+{
+  "python": "3.12.3",
+  "results": [
+    {
+      "input_mib": 8,
+      "capped": false,
+      "result": "saved",
+      "encoder_peak_bytes": 8481509,
+      "caller_values_excluded": true
+    },
+    {
+      "input_mib": 8,
+      "capped": true,
+      "result": "DISKFULL",
+      "encoder_peak_bytes": 2404,
+      "caller_values_excluded": true
+    },
+    {
+      "input_mib": 40,
+      "capped": false,
+      "result": "saved",
+      "encoder_peak_bytes": 8539357,
+      "caller_values_excluded": true
+    },
+    {
+      "input_mib": 40,
+      "capped": true,
+      "result": "DISKFULL",
+      "encoder_peak_bytes": 6509,
+      "caller_values_excluded": true
+    }
+  ]
+}

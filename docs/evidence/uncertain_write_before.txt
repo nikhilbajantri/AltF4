@@ -1,0 +1,107 @@
+test_cli_reports_uncertain_and_exits_unsuccessfully (tests.test_uncertain_write.UncertainWriteTests.test_cli_reports_uncertain_and_exits_unsuccessfully) ... FAIL
+test_complete_batch_survives_as_a_whole_when_rollback_fails (tests.test_uncertain_write.UncertainWriteTests.test_complete_batch_survives_as_a_whole_when_rollback_fails) ... FAIL
+test_complete_put_can_survive_failed_sync_and_failed_rollback (tests.test_uncertain_write.UncertainWriteTests.test_complete_put_can_survive_failed_sync_and_failed_rollback) ... FAIL
+test_delete_can_survive_failed_rollback (tests.test_uncertain_write.UncertainWriteTests.test_delete_can_survive_failed_rollback) ... FAIL
+test_partial_write_and_failed_rollback_preserve_earlier_data (tests.test_uncertain_write.UncertainWriteTests.test_partial_write_and_failed_rollback_preserve_earlier_data) ... FAIL
+test_rollback_sync_failure_is_uncertain_even_after_truncation (tests.test_uncertain_write.UncertainWriteTests.test_rollback_sync_failure_is_uncertain_even_after_truncation) ... FAIL
+test_serve_reports_uncertain_then_poisoned_without_ack (tests.test_uncertain_write.UncertainWriteTests.test_serve_reports_uncertain_then_poisoned_without_ack) ... FAIL
+
+======================================================================
+FAIL: test_cli_reports_uncertain_and_exits_unsuccessfully (tests.test_uncertain_write.UncertainWriteTests.test_cli_reports_uncertain_and_exits_unsuccessfully)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 116, in test_cli_reports_uncertain_and_exits_unsuccessfully
+    self.assertEqual(output.getvalue(), 'ERR UNCERTAIN\n')
+AssertionError: 'ERR IO\n' != 'ERR UNCERTAIN\n'
+- ERR IO
++ ERR UNCERTAIN
+
+
+======================================================================
+FAIL: test_complete_batch_survives_as_a_whole_when_rollback_fails (tests.test_uncertain_write.UncertainWriteTests.test_complete_batch_survives_as_a_whole_when_rollback_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 54, in test_complete_batch_survives_as_a_whole_when_rollback_fails
+    self.assert_uncertain(caught.exception)
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 21, in assert_uncertain
+    self.assertEqual(type(error).__name__, 'UncertainWriteError')
+AssertionError: 'OSError' != 'UncertainWriteError'
+- OSError
++ UncertainWriteError
+
+
+======================================================================
+FAIL: test_complete_put_can_survive_failed_sync_and_failed_rollback (tests.test_uncertain_write.UncertainWriteTests.test_complete_put_can_survive_failed_sync_and_failed_rollback)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 41, in test_complete_put_can_survive_failed_sync_and_failed_rollback
+    self.assert_uncertain(caught.exception)
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 21, in assert_uncertain
+    self.assertEqual(type(error).__name__, 'UncertainWriteError')
+AssertionError: 'OSError' != 'UncertainWriteError'
+- OSError
++ UncertainWriteError
+
+
+======================================================================
+FAIL: test_delete_can_survive_failed_rollback (tests.test_uncertain_write.UncertainWriteTests.test_delete_can_survive_failed_rollback)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 66, in test_delete_can_survive_failed_rollback
+    self.assert_uncertain(caught.exception)
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 21, in assert_uncertain
+    self.assertEqual(type(error).__name__, 'UncertainWriteError')
+AssertionError: 'OSError' != 'UncertainWriteError'
+- OSError
++ UncertainWriteError
+
+
+======================================================================
+FAIL: test_partial_write_and_failed_rollback_preserve_earlier_data (tests.test_uncertain_write.UncertainWriteTests.test_partial_write_and_failed_rollback_preserve_earlier_data)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 97, in test_partial_write_and_failed_rollback_preserve_earlier_data
+    self.assert_uncertain(caught.exception)
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 21, in assert_uncertain
+    self.assertEqual(type(error).__name__, 'UncertainWriteError')
+AssertionError: 'OSError' != 'UncertainWriteError'
+- OSError
++ UncertainWriteError
+
+
+======================================================================
+FAIL: test_rollback_sync_failure_is_uncertain_even_after_truncation (tests.test_uncertain_write.UncertainWriteTests.test_rollback_sync_failure_is_uncertain_even_after_truncation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 78, in test_rollback_sync_failure_is_uncertain_even_after_truncation
+    self.assert_uncertain(caught.exception)
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 21, in assert_uncertain
+    self.assertEqual(type(error).__name__, 'UncertainWriteError')
+AssertionError: 'OSError' != 'UncertainWriteError'
+- OSError
++ UncertainWriteError
+
+
+======================================================================
+FAIL: test_serve_reports_uncertain_then_poisoned_without_ack (tests.test_uncertain_write.UncertainWriteTests.test_serve_reports_uncertain_then_poisoned_without_ack)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/ALT F4/AltF4/tests/test_uncertain_write.py", line 105, in test_serve_reports_uncertain_then_poisoned_without_ack
+    self.assertEqual(output.getvalue().splitlines()[1:],
+AssertionError: Lists differ: ['ERR w1-1 IO', 'ERR w1-2 POISONED'] != ['ERR w1-1 UNCERTAIN', 'ERR w1-2 POISONED']
+
+First differing element 0:
+'ERR w1-1 IO'
+'ERR w1-1 UNCERTAIN'
+
+- ['ERR w1-1 IO', 'ERR w1-2 POISONED']
+?             ^
+
++ ['ERR w1-1 UNCERTAIN', 'ERR w1-2 POISONED']
+?            +++++++ ^
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.050s
+
+FAILED (failures=7)

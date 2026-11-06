@@ -1,5 +1,7 @@
 # Final crash qualification and test history
 
+Latest qualification after the memory, uncertain-write and scanner fixes: [FINAL_GATE_RERUN_REPORT.md](FINAL_GATE_RERUN_REPORT.md). The report below preserves the earlier campaign and its original source identity.
+
 ## Outcome
 
 The shared-batch checker limitation was reproduced, fixed, tested, committed and pushed before the final gate. The final gate passed all **7,000 rounds**: seven modes, two fresh seeds, 500 rounds for every mode/seed pair. All 14 run summaries agree with an independent audit of exactly 500 distinct passing rounds per transcript. Source SHA-256 hashes match the code present for the gate.

@@ -16,7 +16,7 @@ import time
 
 from src import crash
 from src import format as fmt
-from src.errors import CorruptError, DiskFull, LockedError, PoisonedError  # noqa: F401
+from src.errors import CorruptError, DiskFull, LockedError, PoisonedError, UncertainWriteError  # noqa: F401
 
 
 def _fsync_dir(path):
@@ -28,6 +28,11 @@ def _fsync_dir(path):
 
 
 def _pwrite_all(fd, data, offset):
+    if isinstance(data, fmt.FrameParts):
+        for chunk in data.chunks():
+            _pwrite_all(fd, chunk, offset)
+            offset += len(chunk)
+        return
     mv = memoryview(data)
     while mv:
         n = os.pwrite(fd, mv, offset)
@@ -172,23 +177,24 @@ class KVDB:
         self._commit([("del", key)])
 
     def batch(self, ops):
-        self._commit(list(ops))
+        self._commit(fmt.collect_ops(ops))
 
     def _commit(self, ops):
-        frame, offsets = fmt.encode_frame(ops)  # 1 validate, 2 encode
+        size = fmt.frame_size(ops)  # validate before allocating encoded data
         with self._lock:  # 3
             self._check_open()
             if self._poisoned:  # 4
                 raise PoisonedError("an earlier write or fsync failed")
             delete_only = all(op[0] == "del" for op in ops)
             try:
-                self._check_space(len(frame), delete_only)  # 5
+                self._check_space(size, delete_only)  # 5
             except DiskFull:
                 if not self._dead_bytes:
                     raise
                 self._compact_locked()  # E5: reclaim dead bytes, retry once
-                self._check_space(len(frame), delete_only)
-            self._write(frame)  # 6, 7
+                self._check_space(size, delete_only)
+            frame, offsets = fmt.prepare_frame(ops)
+            self._write(frame)  # 6, 7: one frame, one final fsync
             for op, rel in zip(ops, offsets):  # 8
                 is_put = op[0] == "put"
                 self._apply(is_put, op[1], self.end + rel, len(op[2]) if is_put else 0)
@@ -213,13 +219,17 @@ class KVDB:
             crash.point("after_write")  # disk: full frame in page cache, not fsynced
             os.fsync(self._fd)
             crash.point("after_fsync")  # disk: frame durable, not yet indexed or ACKed
-        except OSError:
+        except (OSError, MemoryError) as write_error:
+            self._poisoned = True
             try:
                 os.ftruncate(self._fd, self.end)
                 os.fsync(self._fd)
-            except OSError:
-                pass
-            self._poisoned = True
+            except OSError as rollback_error:
+                # A complete frame may still be replayable. Never promise that
+                # this operation is absent when rollback was not confirmed.
+                raise UncertainWriteError(write_error, rollback_error) from write_error
+            if isinstance(write_error, MemoryError):
+                raise OSError(12, "frame chunk allocation failed") from write_error
             raise
 
     # ---- reads ----

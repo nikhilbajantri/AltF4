@@ -21,6 +21,8 @@ All 14 hooks are exercised by `--mode crashpoints` (at least 14 iterations), and
 | compact_after_swap | New file installed, directory synced | Recover new file; later writes use new descriptor |
 | close_mid | Committed data already durable | Recover independently of close |
 
+If append and rollback both fail, the response is UNCERTAIN and the handle refuses further mutations. Recovery may include a complete frame from that operation; callers must reconcile it. See [the focused report](docs/uncertain_write_report.md).
+
 An fsync error is an injected I/O-failure test, not a fifteenth SIGKILL hook. The engine rolls back the failed append where possible and poisons the handle so later writes cannot be acknowledged.
 
 ## Ordering argument
@@ -47,3 +49,7 @@ Validation precedes frame writing; the complete frame is synced before index pub
 1. The two-seed 500-round-per-mode qualification passed; repeat it if storage or checker code changes. See FINAL_TEST_REPORT.md.
 2. Compare exact shared-batch checks with independent reference cases and retain search-budget failures as qualification failures.
 3. Rehearse crash-here answers against the final code and verify clean-clone/offline operation.
+
+## Large-frame follow-up
+
+Large batches now use bounded encoding chunks with a single final fsync and the existing frame format. Memory allocation failure after a partial write triggers rollback and handle poisoning; failed rollback reports UNCERTAIN. Focused tests kill streamed frames at before_write, torn_write, after_write, after_fsync and after_return. Input retention and queued work still require RAM. See [the memory review](docs/batch_memory_review.md).
