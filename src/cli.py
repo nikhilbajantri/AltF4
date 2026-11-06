@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 
-from src.errors import CorruptError, DiskFull, LockedError, PoisonedError
+from src.errors import CorruptError, DiskFull, LockedError, PoisonedError, UncertainWriteError
 from src.serve import decode_token, encode_token
 
 # These commands read an existing database; they must not create one.
@@ -61,7 +61,8 @@ def main(argv=None):
         ops = None
         if args.command == "batch":
             with open(args.file, encoding="utf-8") as source:
-                ops = [parse_batch_line(line) for line in source if line.strip()]
+                from src.format import collect_ops
+                ops = collect_ops(parse_batch_line(line) for line in source if line.strip())
             from src.format import validate_ops
             validate_ops(ops)
         db = KVDB(args.path, max_bytes=args.max_bytes)
@@ -95,7 +96,7 @@ def main(argv=None):
         print("ERR INVALID")
     except (DiskFull, LockedError, PoisonedError, CorruptError, OSError) as exc:
         reason = {DiskFull: "DISKFULL", LockedError: "LOCKED", PoisonedError: "POISONED",
-                  CorruptError: "CORRUPT"}.get(type(exc), "IO")
+                  CorruptError: "CORRUPT", UncertainWriteError: "UNCERTAIN"}.get(type(exc), "IO")
         print("ERR " + reason)
     return 1
 

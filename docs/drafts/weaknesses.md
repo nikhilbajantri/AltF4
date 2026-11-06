@@ -12,11 +12,7 @@ All numbers were measured on 2026-11-06 on this machine (ext4 on NVMe, Arch Linu
 
 3. **The whole index lives in RAM.** Each key costs a dict entry plus the key `bytes` plus an `(offset, vlen)` tuple. With 1M keys (10-byte keys), RSS grew by 154,428 KB after open, about 158 bytes per key. Peak RSS in that process was 458,688 KB, and it also held the earlier write phase. A dataset whose key count does not fit in memory cannot be opened.
 
-4. **A batch is fully materialised in memory, several times.**
-   - `serve.read_batch` collects every op before the engine call.
-   - `format.encode_frame` builds the payload parts and then `b"".join`s them into one `bytes` frame.
-
-   A 10,000 × 4 KiB batch (39.1 MiB of values) needed an extra 79.4 MiB peak inside `batch()` (tracemalloc), about 2× the input. The limits allow 10,000 ops × 1 MiB values, which would be a frame of about 10 GiB. Nothing caps the total batch size (UNCERTAIN what happens; not tested, it would be a MemoryError or OOM kill rather than a corrupt file).
+4. **Input batches still consume RAM; encoder duplication has been reduced.** The engine now preflights the database cap, uses 4 MiB chunks for large encoded frames, and bounds operation collection. A controlled 40 MiB input required about 8.1 MiB additional tracked encoding memory, compared with 80.1 MiB before. The allowed 10,000 operations x 1 MiB values can still imply roughly 10 GiB of caller/decoded input; no maximum-size allocation was attempted. Serve queues and concurrent requests can multiply input retention, and bytearray inputs require immutable copies. There is no global memory quota or disk-backed input spool. See docs/batch_memory_review.md for exact evidence and scope.
 
 5. **CorruptError and `check` false positives.**
    - `open` raises `CorruptError` and refuses to start when a frame's CRC is valid but its payload is malformed (`format._parse_payload`). That is the right call for real damage. But a torn tail made of stale bytes whose CRC happens to match (about 1 in 2^32) would also stop the database instead of being truncated.
@@ -33,6 +29,6 @@ All numbers were measured on 2026-11-06 on this machine (ext4 on NVMe, Arch Linu
 
 8. **One fsync per operation, one writer at a time.** There is no group commit. A single `put` with a 100-byte value measured 1.12 ms per op (893 ops/s, 500 puts) on NVMe. Two serve writers still serialise on `self._lock` across `pwrite` + `fsync`. Batching is the only way to go faster (1M keys in 100 batches took 1.49 s).
 
-9. **A double I/O failure can resurrect an op that was reported as failed.** If `fsync` fails and the rollback `ftruncate` / `fsync` in `_write` (lines 218-221) also fails, the error is swallowed. A complete frame can stay on disk, and the next open replays it even though serve answered `ERR IO`. Not tested (UNCERTAIN how reachable this is on real hardware).
+9. **A double I/O failure leaves the write outcome uncertain.** Reproduced with injected append-sync and rollback failures. If rollback cannot be confirmed, a complete frame can remain replayable. The engine now raises `UncertainWriteError` (with both underlying errors); serve/CLI report `UNCERTAIN`, never ACK, and later mutations on the handle remain poisoned. This is an explicit unknown outcome, not a guaranteed rejection. Reopen and reconcile before retrying. No on-disk format change or guarantee of rollback through arbitrary storage failures is claimed. See `docs/uncertain_write_report.md` and `tests/test_uncertain_write.py`.
 
 10. **Compaction can grow a file that has no dead bytes.** The 100k × 1 KB case went from 104,100,176 to 104,100,416 bytes (+240), because compaction rewrites into frames of at most 4 MiB, which gives a different frame count. Running it on a file with no dead bytes costs 411 ms of lock time for nothing. There is no "skip if dead_bytes == 0" check (`compact()` line 248).

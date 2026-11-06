@@ -21,3 +21,15 @@
 | R-10 ([#12](https://github.com/nikhilbajantri/AltF4/issues/12)) | - | docs | ARSH-001/002 rows above don't render as a table | blank line between the table header and those rows | | Varsha | fixed on feat-arsh; pending PR merge |
 | R-11 ([#13](https://github.com/nikhilbajantri/AltF4/issues/13)) | - | serve review | a writer that fills its 64-slot queue blocks the input thread for all writers | serve.py:129, :133 blocking `Queue.put` on the main thread | | Arsh | fixed on feat-arsh; pending PR merge |
 | R-12 ([#14](https://github.com/nikhilbajantri/AltF4/issues/14)) | - | documentation verification | BREAKING omitted after_return and contradicted test evidence | stale crash table and failure history | this PR | Arsh | fixed; see docs/review_fixes.md |
+
+## Double I/O-failure review
+
+| ID | Reproduction | Finding | Resolution | Status |
+|---|---|---|---|---|
+| ARSH-003 | Inject append fsync failure and rollback ftruncate/fsync failure on baseline 1bb70c6 | ERR IO did not distinguish a write whose complete frame could reappear after reopen | UncertainWriteError and ERR UNCERTAIN; retain both underlying errors; block later writes/compaction; caller reconciles after reopen | Implemented on feat-arsh; focused before/after evidence in docs/uncertain_write_report.md |
+
+## Large-batch memory review
+
+| ID | Reproduction | Finding | Resolution | Status |
+|---|---|---|---|---|
+| ARSH-004 | 8/40 MiB batches with tracemalloc; capped database; 10,000 references to a shared 1 MiB value | Whole-frame copies were allocated before cap rejection; input iterators were fully consumed | Preflight size checks, bounded frame chunks with original CRC, capped operation collection, rollback on mid-write allocation error | Implemented on feat-arsh; docs/batch_memory_review.md records results and remaining input-RAM limits |

@@ -158,3 +158,91 @@ def _parse_payload(mv, p, end, pos):
     if p != end:
         raise corrupt("payload has %d trailing bytes" % (end - p))
     return ops
+
+
+STREAM_THRESHOLD = 4 * 1024 * 1024
+WRITE_CHUNK_SIZE = 4 * 1024 * 1024
+
+
+def frame_size(ops):
+    """Validate and calculate the encoded size without constructing payloads."""
+    validate_ops(ops)
+    return FRAME_HDR_SIZE + NOPS_SIZE + sum(
+        OP_HDR_SIZE + len(op[1]) + (len(op[2]) if op[0] == "put" else 0)
+        for op in ops)
+
+
+def collect_ops(iterable):
+    """Collect at most MAX_OPS operations, validating each before retaining it."""
+    ops = []
+    for op in iterable:
+        if len(ops) == MAX_OPS:
+            raise ValueError("batch must be 1..%d ops" % MAX_OPS)
+        validate_ops([op])
+        ops.append(op)
+    validate_ops(ops)
+    return ops
+
+
+class FrameParts:
+    """Internal encoded-frame parts; prefix views support the torn-write hook."""
+
+    def __init__(self, parts, length):
+        self.parts, self.length = parts, length
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, key):
+        if not isinstance(key, slice) or key.start not in (None, 0) or key.step is not None:
+            raise TypeError("only prefix slices are supported")
+        stop = key.indices(self.length)[1]
+        return FrameParts(self.parts, stop)
+
+    def chunks(self):
+        remaining, used, pending = self.length, 0, []
+        for part in self.parts:
+            view = memoryview(part)
+            position = 0
+            while position < len(view) and remaining:
+                count = min(len(view)-position, remaining, WRITE_CHUNK_SIZE-used)
+                pending.append(view[position:position+count])
+                position += count
+                used += count
+                remaining -= count
+                if used == WRITE_CHUNK_SIZE:
+                    chunk = b"".join(pending)
+                    pending.clear()
+                    used = 0
+                    yield chunk
+            if not remaining:
+                break
+        if pending:
+            yield b"".join(pending)
+
+
+def prepare_frame(ops):
+    """Use ordinary bytes for small frames and bounded chunks for large ones.
+
+    Caller-owned immutable values are referenced, not copied. Mutable inputs
+    are snapshotted, preserving encode_frame's ownership semantics.
+    """
+    size = frame_size(ops)
+    if size <= STREAM_THRESHOLD:
+        return encode_frame(ops)
+    payload = [NOPS.pack(len(ops))]
+    offsets = []
+    off = FRAME_HDR_SIZE + NOPS_SIZE
+    for op in ops:
+        key = bytes(op[1])
+        value = bytes(op[2]) if op[0] == "put" else b""
+        payload.extend((OP_HDR.pack(PUT if op[0] == "put" else DEL,
+                                   len(key), len(value)), key, value))
+        offsets.append(off + OP_HDR_SIZE + len(key))
+        off += OP_HDR_SIZE + len(key) + len(value)
+    length = LEN.pack(off - FRAME_HDR_SIZE)
+    crc = zlib.crc32(length)
+    for part in payload:
+        crc = zlib.crc32(part, crc)
+    parts = [length, struct.pack("<I", crc), *payload]
+    return FrameParts(parts, off), offsets

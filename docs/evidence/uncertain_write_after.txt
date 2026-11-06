@@ -1,0 +1,13 @@
+test_cli_reports_uncertain_and_exits_unsuccessfully (tests.test_uncertain_write.UncertainWriteTests.test_cli_reports_uncertain_and_exits_unsuccessfully) ... ok
+test_complete_batch_survives_as_a_whole_when_rollback_fails (tests.test_uncertain_write.UncertainWriteTests.test_complete_batch_survives_as_a_whole_when_rollback_fails) ... ok
+test_complete_put_can_survive_failed_sync_and_failed_rollback (tests.test_uncertain_write.UncertainWriteTests.test_complete_put_can_survive_failed_sync_and_failed_rollback) ... ok
+test_crash_runner_rejects_uncertain_response (tests.test_uncertain_write.UncertainWriteTests.test_crash_runner_rejects_uncertain_response) ... ok
+test_delete_can_survive_failed_rollback (tests.test_uncertain_write.UncertainWriteTests.test_delete_can_survive_failed_rollback) ... ok
+test_partial_write_and_failed_rollback_preserve_earlier_data (tests.test_uncertain_write.UncertainWriteTests.test_partial_write_and_failed_rollback_preserve_earlier_data) ... ok
+test_rollback_sync_failure_is_uncertain_even_after_truncation (tests.test_uncertain_write.UncertainWriteTests.test_rollback_sync_failure_is_uncertain_even_after_truncation) ... ok
+test_serve_reports_uncertain_then_poisoned_without_ack (tests.test_uncertain_write.UncertainWriteTests.test_serve_reports_uncertain_then_poisoned_without_ack) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 1.312s
+
+OK

@@ -6,6 +6,7 @@ from the README frame sizes so DISKFULL and compaction paths can be exercised.
 """
 
 import threading
+from src.format import collect_ops
 
 from src.errors import DiskFull, LockedError, PoisonedError  # noqa: F401 (re-exported)
 
@@ -55,7 +56,7 @@ class FakeKVDB:
         self.batch([("del", key)])
 
     def batch(self, ops):
-        ops = list(ops)
+        ops = collect_ops(ops)
         if not 1 <= len(ops) <= MAX_BATCH:
             raise ValueError("batch must be 1..10000 ops")
         frame = FRAME_HEADER + NOPS_SIZE

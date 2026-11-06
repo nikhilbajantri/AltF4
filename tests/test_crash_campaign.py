@@ -316,9 +316,9 @@ class CrashCampaignTests(unittest.TestCase):
                     else:
                         file = sandbox / "src" / "engine.py"
                         text = file.read_text()
-                        needle = "frame, offsets = fmt.encode_frame(ops)"
+                        needle = "            frame, offsets = fmt.prepare_frame(ops)"
                         self.assertIn(needle, text)
-                        text = text.replace(needle, "ops = ops[:1]  # planted\n        " + needle, 1)
+                        text = text.replace(needle, "            ops = ops[:1]  # planted\n" + needle, 1)
                     file.write_text(text)
                     args = [sys.executable, "-B", "./torture", "--iterations", "50",
                             "--seed", "314159", "--data-dir", str(sandbox / "evidence")]

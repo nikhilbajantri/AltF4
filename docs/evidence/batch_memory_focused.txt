@@ -1,0 +1,13 @@
+test_chunk_allocation_failure_rolls_back_and_poisons_handle (tests.test_batch_memory.BatchMemoryTests.test_chunk_allocation_failure_rolls_back_and_poisons_handle) ... ok
+test_chunked_bytes_and_offsets_match_existing_format (tests.test_batch_memory.BatchMemoryTests.test_chunked_bytes_and_offsets_match_existing_format) ... ok
+test_disk_cap_rejects_before_encoding_a_frame (tests.test_batch_memory.BatchMemoryTests.test_disk_cap_rejects_before_encoding_a_frame) ... ok
+test_generator_stops_at_operation_limit (tests.test_batch_memory.BatchMemoryTests.test_generator_stops_at_operation_limit) ... ok
+test_large_batch_encoder_overhead_is_bounded (tests.test_batch_memory.BatchMemoryTests.test_large_batch_encoder_overhead_is_bounded) ... ok
+test_prepared_frame_snapshots_mutable_inputs (tests.test_batch_memory.BatchMemoryTests.test_prepared_frame_snapshots_mutable_inputs) ... ok
+test_serve_still_drains_an_excessive_batch (tests.test_batch_memory.BatchMemoryTests.test_serve_still_drains_an_excessive_batch) ... ok
+test_streamed_frames_recover_at_write_crash_points (tests.test_batch_memory.BatchMemoryTests.test_streamed_frames_recover_at_write_crash_points) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 3.299s
+
+OK

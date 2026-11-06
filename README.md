@@ -18,8 +18,8 @@ Limits: key 1..1024 bytes, value 0..1,048,576 bytes, batch 1..10,000 ops.
 Batch order: ops apply first to last (put X then del X leaves X absent).
 
 ## Write order (put, delete, batch)
-1 validate  2 encode frame  3 take global lock  4 refuse if poisoned  5 if end+frame > max_bytes (minus reserve for non-delete frames) -> DISKFULL, nothing written  6 os.pwrite at end (loop until complete)  7 os.fsync(fd)  8 update index, end += len  9 release lock, return; serve prints ACK <id> and flushes.
-On error in 6 or 7: ftruncate(fd, end), fsync, mark poisoned, re-raise. Never retry fsync.
+1 validate and calculate frame size  2 take global lock  3 refuse if poisoned  4 check max_bytes before allocating the encoded frame (compact/retry if dead space exists)  5 prepare frame and CRC  6 os.pwrite at end, in bounded chunks for large frames (loop until complete)  7 os.fsync(fd)  8 update index, end += frame size  9 release lock, return; serve prints ACK <id> and flushes.
+On error in 6 or 7: ftruncate(fd, end), fsync, mark poisoned, re-raise. If rollback truncation or its fsync also fails, raise UncertainWriteError: the operation may be present after reopen. Never retry the failed append fsync.
 Delete reserve = min(65536, max_bytes // 10).
 
 ## Recovery (open)
@@ -29,7 +29,7 @@ Delete reserve = min(65536, max_bytes // 10).
 Hold the lock. Write live keys as PUT frames (<= 4 MB each) to <path>.compact, fsync, close, os.replace to <path>, fsync directory, reopen and swap fd/index/end. Triggers: compact command; DISKFULL with dead bytes (then retry once); dead bytes > 50% of a file > 4 MB.
 
 ## Engine API (src/engine.py)
-KVDB(path, max_bytes=None); put(key: bytes, value: bytes); get(key) -> bytes | None; delete(key); batch([("put", k, v) | ("del", k)]); compact(); keys(); items(); close(); stats -> {keys, file_bytes, dead_bytes, recovery_ms}. Errors: DiskFull, PoisonedError, LockedError, ValueError.
+KVDB(path, max_bytes=None); put(key: bytes, value: bytes); get(key) -> bytes | None; delete(key); batch([("put", k, v) | ("del", k)]); compact(); keys(); items(); close(); stats -> {keys, file_bytes, dead_bytes, recovery_ms}. Errors: DiskFull, PoisonedError, LockedError, ValueError, OSError, UncertainWriteError (an OSError subclass).
 
 ## CLI
 ./kvdb open <path> [--max-bytes N]   -> keys=<n> recovery_ms=<ms>
@@ -51,7 +51,7 @@ get <id> <key>          -> VAL <id> <value> | NOTFOUND <id>
 batch <id> / op lines "put k v" or "del k" / end  -> ACK <id> | ERR <id> <reason>
 compact <id>            -> ACK <id> | ERR <id> <reason>
 quit
-id prefix before "-" names the writer (w1-17); each writer prefix gets its own worker thread. "hex:" prefix = hex-encoded bytes. ERR reasons: DISKFULL, INVALID, POISONED, IO, UNSUPPORTED, INTERNAL, BUSY. IO reports the initial operating-system error; POISONED rejects later writes on an unsafe handle. BUSY rejects a request whose writer queue is full without blocking other writers. UNSUPPORTED and INTERNAL report unavailable operations and unexpected failures. Startup may report LOCKED, CORRUPT, IO, or INVALID without an operation id. ACK is printed only after the engine call returned (after fsync).
+id prefix before "-" names the writer (w1-17); each writer prefix gets its own worker thread. "hex:" prefix = hex-encoded bytes. ERR reasons: DISKFULL, INVALID, POISONED, IO, UNCERTAIN, UNSUPPORTED, INTERNAL, BUSY. IO reports an operating-system error. For append failures with confirmed rollback the operation is absent. UNCERTAIN reports an append failure whose rollback could not be confirmed: the operation may be present or absent after reopening. It is neither an ACK nor a guaranteed rejection. Reopen and reconcile the application state before retrying; do not assume an automatic retry is safe. POISONED rejects later writes and compaction on that handle. The Python UncertainWriteError retains write_error and rollback_error for diagnosis. BUSY rejects a request whose writer queue is full without blocking other writers. UNSUPPORTED and INTERNAL report unavailable operations and unexpected failures. Startup may report LOCKED, CORRUPT, IO, or INVALID without an operation id. ACK is printed only after the engine call returned (after fsync).
 
 ## Torture
 ./torture --iterations 500 --seed 12345 [--mode default|large-values|large-batch|recovery-crash|compaction|disk-full|crashpoints]
@@ -110,7 +110,7 @@ The first three modes use random wall-clock delays and two stop-and-wait writers
 
 The runner launches the public kvdb CLI and obtains actual state only through open, check, and dump. The oracle/workload/runner import no storage implementation. crash_probe remains only a compatibility wrapper over these same public commands. Expectation comes from recorded requests and replies, not the database dump.
 
-Private-key states must match a permitted world exactly. Shared and private mutations, including overlapping multi-key batches, are checked against whole-operation orderings respecting writer FIFO and observed SENT/response precedence. The exact search uses memoization and finalized-key pruning; a 250,000-state budget produces TOOL ERROR with no verdict if exceeded. See docs/shared_batch_fix.md for before/after evidence. INVALID, DISKFULL, and BUSY operations must leave no changes. Unexpected IO, POISONED, INTERNAL or UNSUPPORTED responses fail the run.
+Private-key states must match a permitted world exactly. Shared and private mutations, including overlapping multi-key batches, are checked against whole-operation orderings respecting writer FIFO and observed SENT/response precedence. The exact search uses memoization and finalized-key pruning; a 250,000-state budget produces TOOL ERROR with no verdict if exceeded. See docs/shared_batch_fix.md for before/after evidence. INVALID, DISKFULL, and BUSY operations must leave no changes. Unexpected IO, UNCERTAIN, POISONED, INTERNAL or UNSUPPORTED responses fail the run.
 
 Seeds reproduce planned operations and kill delays, not OS scheduling or the number of ACKs. Intentional idle gaps let the report distinguish kills with and without requests awaiting responses. That metric does not prove a write was executing at kill time. Logs and databases remain under the unique evidence directory printed at startup (default ~/tmp_test/torture_data). Failures stop with exit 1 and concise key/op-ID differences; failure.txt retains full details. A TOOL ERROR (harness or OS trouble, not an engine verdict) is printed with its evidence and never counted as a PASS; that database is renamed to `*.tool-error` and the run continues on a fresh one, then exits 2. After SIGKILL the runner waits up to 60 s for the child to exit (a child inside fsync exits only when the kernel finishes that I/O) and prints WARN if that took more than 5 s; post-kill open, check and dump each get 120 s. The summary reads `PASS=n/N TOOL_ERROR=t FAIL=f max_exit_wait_s=s`.
 
@@ -123,3 +123,9 @@ These are process-crash and injected-I/O checks. The two-seed, 500-round-per-mod
 ## Final qualification
 
 See [FINAL_TEST_REPORT.md](FINAL_TEST_REPORT.md) for the complete test history, before/after shared-batch evidence, the 7,000-round gate, and limitations. From the repository root, `python3 tools/run_final_gate.py --host-storage-dir /mnt/d --host-storage-dir /mnt/c` repeats the gate on this WSL setup with compressed evidence and a 20 GiB reserve. Use the actual Windows volume holding your WSL disk.
+
+## Large-batch memory
+
+The engine checks the encoded size against the database cap before encoding. Frames above 4 MiB retain immutable input parts, calculate the original CRC incrementally, and write chunks of at most 4 MiB, followed by one final fsync. The on-disk format and atomic batch semantics are unchanged. API iterators and CLI batch files stop collecting after the 10,001st operation instead of exhausting an unbounded input. The limit remains 10,000 operations, 1 MiB per value.
+
+Measured additional encoding memory for a 40 MiB batch fell from about 80.1 MiB to 8.1 MiB; rejected batches avoid that allocation. Caller-owned input values are excluded from these measurements. Serve still retains decoded batch input and queued requests, and mutable API inputs need snapshots; this is not a total RAM quota. See [docs/batch_memory_review.md](docs/batch_memory_review.md) for measurements, tests and remaining limits.
