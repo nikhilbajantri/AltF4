@@ -14,3 +14,12 @@ class PoisonedError(Exception):
 
 class LockedError(Exception):
     """Another process holds <path>.lock."""
+
+
+class CorruptError(Exception):
+    """A frame's CRC is valid but its content is malformed (not a torn tail)."""
+
+    def __init__(self, offset, reason):
+        super().__init__("offset %d: %s" % (offset, reason))
+        self.offset = offset
+        self.reason = reason

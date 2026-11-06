@@ -12,6 +12,8 @@ Layout (README "On-disk format"):
 import struct
 import zlib
 
+from src.errors import CorruptError
+
 MAGIC = b"KVDB0001"
 VERSION = 1
 HEADER_SIZE = 16
@@ -49,6 +51,10 @@ def _check_bytes(name, b, lo, hi):
         raise ValueError("%s must be bytes" % name)
     if not lo <= len(b) <= hi:
         raise ValueError("%s must be %d..%d bytes, got %d" % (name, lo, hi, len(b)))
+
+
+def check_key(key):
+    _check_bytes("key", key, 1, MAX_KEY)
 
 
 def validate_ops(ops):
@@ -93,7 +99,10 @@ def encode_frame(ops):
 
 
 def decode_frame(buf, pos, size):
-    """Decode the frame at pos. Returns (ops, next_pos) or None to stop the scan.
+    """Decode the frame at pos. Returns (ops, next_pos), or None for a torn tail.
+
+    Raises CorruptError if the CRC is valid but the content is malformed: that
+    is not a crash artifact, so recovery must not truncate it away.
 
     ops: list of (type, key_bytes, abs_value_offset, vlen). Values are not
     copied; read them later as buf[off:off + vlen]. buf may be bytes, mmap or
@@ -113,36 +122,39 @@ def decode_frame(buf, pos, size):
         # stale or garbage (out-of-order page writeback, bit rot, zero fill).
         if zlib.crc32(mv[start:end], zlib.crc32(mv[pos:pos + 8])) != crc:
             return None
-        ops = _parse_payload(mv, start, end)
-    # Payload must parse exactly to its declared length (CRC-valid but malformed).
-    if ops is None:
-        return None
+        # CRC-valid but malformed content raises CorruptError (never a crash artifact).
+        ops = _parse_payload(mv, start, end, pos)
     return ops, end
 
 
-def _parse_payload(mv, p, end):
+def _parse_payload(mv, p, end, pos):
+    def corrupt(reason):
+        return CorruptError(pos, reason)
+
     if end - p < NOPS_SIZE:
-        return None
+        raise corrupt("payload shorter than nops")
     (nops,) = NOPS.unpack_from(mv, p)
     if not 1 <= nops <= MAX_OPS:
-        return None
+        raise corrupt("bad nops %d" % nops)
     p += NOPS_SIZE
     ops = []
-    for _ in range(nops):
+    for i in range(nops):
         if end - p < OP_HDR_SIZE:
-            return None
+            raise corrupt("op %d header past payload end" % i)
         typ, klen, vlen = OP_HDR.unpack_from(mv, p)
         p += OP_HDR_SIZE
-        if typ not in (PUT, DEL) or not 1 <= klen <= MAX_KEY or vlen > MAX_VALUE:
-            return None
+        if typ not in (PUT, DEL):
+            raise corrupt("op %d unknown type %d" % (i, typ))
+        if not 1 <= klen <= MAX_KEY or vlen > MAX_VALUE:
+            raise corrupt("op %d bad klen %d / vlen %d" % (i, klen, vlen))
         if typ == DEL and vlen:
-            return None
+            raise corrupt("op %d DEL with vlen %d" % (i, vlen))
         if end - p < klen + vlen:
-            return None
+            raise corrupt("op %d body past payload end" % i)
         key = bytes(mv[p:p + klen])
         p += klen
         ops.append((typ, key, p, vlen))
         p += vlen
     if p != end:
-        return None
+        raise corrupt("payload has %d trailing bytes" % (end - p))
     return ops

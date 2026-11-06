@@ -2,10 +2,13 @@
 
 import mmap
 import os
+import struct
 import tempfile
 import unittest
+import zlib
 
 from src import format as fmt
+from src.errors import CorruptError
 
 
 def roundtrip(test, ops):
@@ -101,6 +104,32 @@ class StopRuleTest(unittest.TestCase):
         self.assertEqual((ops1[0][:2], ops2[0][:2]), ((fmt.PUT, b"a"), (fmt.DEL, b"a")))
         self.assertEqual(p, len(buf))
         self.assertIsNone(fmt.decode_frame(buf, p, len(buf)))
+
+
+def crc_valid_frame(payload):
+    len_bytes = fmt.LEN.pack(len(payload))
+    crc = zlib.crc32(payload, zlib.crc32(len_bytes))
+    return len_bytes + struct.pack("<I", crc) + payload
+
+
+class CorruptTest(unittest.TestCase):
+    def assertCorrupt(self, payload, pos=0):
+        frame = b"\0" * pos + crc_valid_frame(payload)
+        with self.assertRaises(CorruptError) as cm:
+            fmt.decode_frame(frame, pos, len(frame))
+        self.assertEqual(cm.exception.offset, pos)
+
+    def test_unknown_op_type(self):
+        self.assertCorrupt(fmt.NOPS.pack(1) + fmt.OP_HDR.pack(9, 1, 0) + b"k", pos=16)
+
+    def test_other_malformed_payloads(self):
+        put = fmt.OP_HDR.pack(fmt.PUT, 1, 1) + b"kv"
+        self.assertCorrupt(b"")                                         # no nops
+        self.assertCorrupt(fmt.NOPS.pack(0))                            # nops 0
+        self.assertCorrupt(fmt.NOPS.pack(2) + put)                      # missing op
+        self.assertCorrupt(fmt.NOPS.pack(1) + fmt.OP_HDR.pack(fmt.PUT, 0, 0))   # klen 0
+        self.assertCorrupt(fmt.NOPS.pack(1) + fmt.OP_HDR.pack(fmt.DEL, 1, 1) + b"kv")
+        self.assertCorrupt(fmt.NOPS.pack(1) + put + b"x")               # trailing byte
 
 
 class ValidateTest(unittest.TestCase):
