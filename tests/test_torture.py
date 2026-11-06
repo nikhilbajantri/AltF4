@@ -56,7 +56,7 @@ class OracleTests(unittest.TestCase):
         self.assertEqual(first, generate(123, 1, "w1"))
         self.assertNotEqual(first, generate(124, 1, "w1"))
         for op_id, ops in first:
-            self.assertTrue(all(op[1].startswith(b"w1/") for op in ops))
+            self.assertTrue(all(op[1].startswith(b"w1/") or op[1] in (b"shared/status", b"") for op in ops))
             self.assertIn(op_id, command(op_id, ops))
 
 

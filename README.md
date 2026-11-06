@@ -51,7 +51,7 @@ get <id> <key>          -> VAL <id> <value> | NOTFOUND <id>
 batch <id> / op lines "put k v" or "del k" / end  -> ACK <id> | ERR <id> <reason>
 compact <id>            -> ACK <id> | ERR <id> <reason>
 quit
-id prefix before "-" names the writer (w1-17); each writer prefix gets its own worker thread. "hex:" prefix = hex-encoded bytes. ERR reasons: DISKFULL, INVALID, POISONED. ACK is printed only after the engine call returned (after fsync).
+id prefix before "-" names the writer (w1-17); each writer prefix gets its own worker thread. "hex:" prefix = hex-encoded bytes. ERR reasons: DISKFULL, INVALID, POISONED, IO, UNSUPPORTED, INTERNAL, BUSY. IO reports the initial operating-system error; POISONED rejects later writes on an unsafe handle. BUSY rejects a request whose writer queue is full without blocking other writers. UNSUPPORTED and INTERNAL report unavailable operations and unexpected failures. Startup may report LOCKED, CORRUPT, IO, or INVALID without an operation id. ACK is printed only after the engine call returned (after fsync).
 
 ## Torture
 ./torture --iterations 500 --seed 12345 [--mode default|large-values|large-batch|recovery-crash|compaction|disk-full|crashpoints]
@@ -82,22 +82,36 @@ Nikhil: engine, format, crash points. Arsh: serve + torture. Srushti: CLI, inspe
 ## Layout note
 The torture harness package lives in `torturelib/` (runner.py, oracle.py, workload.py) because `./torture` is the executable entry point and a file and directory cannot share that name.
 
-## Arsh milestone: concurrent serve and first crash runner
+## Serve and torture usage
 
-Run from the repository root in Ubuntu/WSL:
+Run in WSL/Linux from the repository root:
 
-    python3 -m src.serve practice.db
-    python3 ./torture --iterations 25 --seed 12345
+    make build
+    ./kvdb serve ~/tmp_test/practice.db
+    ./torture --iterations 100 --seed 12345 --mode default
 
-Serve routes each operation ID prefix (before the first hyphen) to a separate worker. Commands from one writer retain input order; responses from different writers may interleave. Stop-and-wait clients must wait for their operation response before sending the next operation. Responses are printed and flushed under one output lock. EOF and quit drain queued work before closing the engine. There are at most 64 worker prefixes, with queues bounded to 64 pending commands per worker. The after_return crash point fires after a successful mutation returns and before its ACK.
+Serve uses one worker per operation-ID prefix. Accepted commands retain per-writer order; responses from different writers may interleave. Each queue has 64 pending slots and at most 64 prefixes are supported. A full queue returns BUSY immediately (which may precede earlier queued responses). Stop-and-wait clients avoid queue overflow. Invalid UTF-8 is rejected per physical line; invalid batches are consumed through end and never partly submitted. EOF/quit finish accepted queued operations before close. ACK follows engine return; after_return kills just before ACK.
 
-The current runner covers two stop-and-wait writers using separate key namespaces, random puts/deletes/small batches, seeded operation plans and kill delays, real SIGKILL, reopen, check, and exact dump comparison. At most one unanswered operation per writer produces at most four allowed worlds. Values contain operation IDs and deterministic SHA-256 filler. Every run uses fresh databases and preserves SENT/response/kill evidence in oracle.log under a unique run directory, printed at startup (default: ~/tmp_test/torture_data, inside Linux). Failures return exit code 1; tool errors stop with TOOL ERROR and exit code 2. Reusing a seed reproduces the planned streams and kill delays; OS scheduling means the number of sent or acknowledged operations can differ.
+| Mode | Actual coverage |
+|---|---|
+| default | Two writers, private and shared keys, puts/deletes/batches through 10,000 operations, invalid requests, 2 ms to 1 s log-uniform kill delays; three crashes per database |
+| large-values | Two writers, a maximum-size 1 MiB value at the start of each stream, followed by 128 KiB values |
+| large-batch | Two writers, 10,000 operations at the start of each stream, followed by random 2..10,000-operation batches |
+| recovery-crash | Three consecutive kills during replay or tail repair; torn tails produced by the real torn_write hook |
+| compaction | Cycles four compaction crash hooks; every fifth round uses multiple output frames |
+| disk-full | Rejected puts and whole batches, successful reserve deletes, close crash, reclaiming space and writing again |
+| crashpoints | Cycles all 14 hooks; use at least 14 iterations for complete hook coverage |
 
-The top-level CLI remains a stub, so the runner temporarily launches src.serve directly and uses torturelib.crash_probe as its separate open/check/dump adapter. The runner, workload generator, and expected-state oracle never import storage code. Only the adapter imports the engine/scanner to perform recovery and export the actual state.
+The first three modes use random wall-clock delays and two stop-and-wait writers. Targeted modes use deterministic crash locations and report zero random delay; recovery/close crashes need not have a request awaiting a response. Default also forces a torn_write every fifth round, starting at round one, so omitted recovery truncation is observable even when random kills leave complete frames.
 
-Still pending: shared-key ordering, 1 MB values, 10,000-op crash workloads, recovery-crash/compaction/disk-full/crashpoints modes, repeated crashes on one database, full seven-mode 500-round release qualification. The current default workload is a first milestone, not the complete PRD torture suite. A request awaiting a response at kill time is not proof that the engine was executing a disk write then. SIGKILL tests process crashes; they do not simulate power loss. Functional checks run from the mounted Windows source folder; test databases for manual runner executions default to the Linux filesystem, and these results are not performance measurements.
+The runner launches the public kvdb CLI and obtains actual state only through open, check, and dump. The oracle/workload/runner import no storage implementation. crash_probe remains only a compatibility wrapper over these same public commands. Expectation comes from recorded requests and replies, not the database dump.
 
+Private-key states must match a permitted world exactly. The shared/status key is mutated only by single-operation requests; observed SENT/response order rejects values overtaken by later completed operations. Batches remain private to avoid accepting inconsistent independent shared-key outcomes. General shared-key multi-operation batch checking is still outside this oracle's scope. INVALID, DISKFULL, and BUSY operations must leave no changes. Unexpected IO, POISONED, INTERNAL or UNSUPPORTED responses fail the run.
 
-## Major crash campaign
+Seeds reproduce planned operations and kill delays, not OS scheduling or the number of ACKs. Intentional idle gaps let the report distinguish kills with and without requests awaiting responses. That metric does not prove a write was executing at kill time. Logs and databases remain under the unique evidence directory printed at startup (default ~/tmp_test/torture_data). Failures stop with exit 1 and concise key/op-ID differences; failure.txt retains full details. Tool errors stop with TOOL ERROR and exit 2.
 
-See [CRASH_TEST_REPORT.md](CRASH_TEST_REPORT.md) for verified results, failures found, evidence paths, limitations, and rerun commands. Targeted coverage is available with: python3 -B -m unittest tests.test_crash_campaign -v.
+## Verification records
+
+See [docs/review_fixes.md](docs/review_fixes.md) for the current issue-resolution checks. [CRASH_TEST_REPORT.md](CRASH_TEST_REPORT.md) records the earlier campaign against its stated source hashes; it is historical, not a claim about later commits. The targeted suite runs with `python3 -B -m unittest tests.test_crash_campaign -v`.
+
+These are process-crash and injected-I/O checks. Physical power-loss testing, arbitrary media corruption, and the final 500-round-per-mode release gate remain separate work. Keep benchmark/test databases on Linux ext4; the currently open Windows source checkout is not itself an ext4 checkout.

@@ -1,8 +1,4 @@
-"""First crash-test milestone: two writers, private keys, puts/deletes/batches.
-
-Expected state is computed solely from the command/response transcript. The
-separate crash_probe adapter supplies open/check/dump until the CLI is ready.
-"""
+"""Seven crash modes with transcript-based expected state and public CLI checks."""
 import argparse
 from collections import Counter
 import json
@@ -17,7 +13,7 @@ import tempfile
 import threading
 import time
 
-from torturelib import oracle, workload
+from torturelib import oracle, workload, protocol, modes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,8 +30,8 @@ def clean_environment():
     return env
 
 
-def iteration(seed, number, directory, log):
-    plans = {w: workload.generate(seed, number, w) for w in ("w1", "w2")}
+def iteration(seed, number, directory, log, mode="default", initial=None):
+    plans = {w: workload.generate(seed, number, w, mode=mode) for w in ("w1", "w2")}
     histories = {w: [] for w in plans}
     replies = {w: queue.Queue() for w in plans}
     started = {w: threading.Event() for w in plans}
@@ -44,16 +40,21 @@ def iteration(seed, number, directory, log):
     guard, pipe_lock = threading.Lock(), threading.Lock()
     records = {}
     problems = []
-    db_path = directory / ("iteration-%04d.db" % number)
-    delay = random.Random("kill:%s:%s" % (seed, number)).uniform(.002, .025)
+    group = (number - 1) // 3 if mode == "default" else number
+    db_path = directory / ("iteration-%04d.db" % group)
+    delay = 10 ** random.Random("kill:%s:%s" % (seed, number)).uniform(-2.7, 0)
+    event_order = 0
 
     def record(event, **fields):
+        nonlocal event_order
+        event_order += 1
         # Caller holds guard; record and state transitions share one ordering.
-        log.write(json.dumps(dict(iteration=number, event=event, **fields)) + "\n")
+        log.write(json.dumps(dict(iteration=number, event=event, order=event_order, **fields)) + "\n")
         log.flush()
+        return event_order
 
     with open(directory / ("stderr-%04d.log" % number), "w") as stderr:
-        proc = subprocess.Popen([sys.executable, "-m", "src.serve", str(db_path)],
+        proc = subprocess.Popen([sys.executable, str(ROOT / "kvdb"), "serve", str(db_path)],
                                 cwd=ROOT, env=clean_environment(), stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE, stderr=stderr, text=True, bufsize=1)
 
@@ -61,7 +62,7 @@ def iteration(seed, number, directory, log):
             for line in proc.stdout:
                 fields = line.split()
                 with guard:
-                    record("RESPONSE", line=line.rstrip("\n"))
+                    response_order = record("RESPONSE", line=line.rstrip("\n"))
                     if fields and fields[0] == "READY":
                         ready.put(line)
                     elif len(fields) >= 2 and fields[0] in ("ACK", "ERR"):
@@ -72,6 +73,9 @@ def iteration(seed, number, directory, log):
                         if fields[0] == "ACK" and len(fields) != 2:
                             problems.append("malformed ACK: " + line.strip())
                         records[op_id][2] = fields[0]
+                        records[op_id][4] = response_order
+                        if fields[0] == "ERR" and (len(fields) != 3 or fields[2] not in ("INVALID", "DISKFULL", "BUSY")):
+                            problems.append("unexpected error: " + line.strip())
                         replies[op_id.split("-", 1)[0]].put(op_id)
                     else:
                         problems.append("unexpected response: " + line.strip())
@@ -84,7 +88,7 @@ def iteration(seed, number, directory, log):
                 with guard:
                     if stop.is_set():
                         return
-                    entry = [op_id, ops, None]
+                    entry = [op_id, ops, None, event_order + 1, None]
                     histories[w].append(entry)
                     records[op_id] = entry
                     record("SENT", id=op_id, ops=[[op[0]] + [x.hex() for x in op[1:]]
@@ -108,6 +112,10 @@ def iteration(seed, number, directory, log):
                             problems.append("response out of order for " + op_id)
                         return
                     break
+                # Deliberate quiet gaps allow kills with no pending requests too.
+                pause = random.Random("pause:%s:%s:%s" % (seed, number, op_id)).uniform(0, .006)
+                if stop.wait(pause):
+                    return
 
         read_thread = threading.Thread(target=reader, daemon=True)
         writers = [threading.Thread(target=writer, args=(w,), daemon=True) for w in plans]
@@ -144,36 +152,34 @@ def iteration(seed, number, directory, log):
             read_thread.join(timeout=5)
             if any(t.is_alive() for t in writers + [read_thread]):
                 raise ToolError("pipe thread failed to stop after kill")
-            proc.stdin.close()
+            try:
+                proc.stdin.close()
+            except BrokenPipeError:
+                pass
             proc.stdout.close()
         if proc.returncode != -signal.SIGKILL:
             raise ToolError("child did not exit via SIGKILL: %s" % proc.returncode)
     if problems:
         raise AssertionError("; ".join(problems))
-    if any(entry[2] == "ERR" for entry in records.values()):
-        raise AssertionError("unexpected ERR in default workload; inspect oracle.log")
-    probe = subprocess.run([sys.executable, "-m", "torturelib.crash_probe", str(db_path)],
-                           cwd=ROOT, env=clean_environment(), capture_output=True,
-                           text=True, timeout=15)
-    if probe.returncode:
-        raise AssertionError("open/check/dump failed: " + probe.stderr)
-    try:
-        result = json.loads(probe.stdout)
-        actual = {bytes.fromhex(k): bytes.fromhex(v) for k, v in result["items"]}
-    except (ValueError, KeyError, TypeError) as exc:
-        raise ToolError("invalid probe output: " + str(exc)) from None
-    world = oracle.match(list(histories.values()), actual)
+    if mode == "default" and (number - 1) % 5 == 0:
+        modes.session(db_path, workload.command("w1-tail", [("put", b"tail-fixture", b"uncommitted")]),
+                      log, number, "torn_write")
+    actual = protocol.recovered(db_path)
+    world = oracle.match(list(histories.values()), actual, initial)
     counts = {w: sum(entry[2] == "ACK" for entry in h) for w, h in histories.items()}
     mix = Counter("batch" if len(entry[1]) > 1 else entry[1][0][0]
                   for entry in records.values())
-    return delay * 1000, in_flight, world, counts, mix
+    mix["ERR"] = sum(entry[2] == "ERR" for entry in records.values())
+    mix["shared"] = sum(any(op[1] == oracle.SHARED for op in entry[1]) for entry in records.values())
+    mix["max_batch"] = max((len(entry[1]) for entry in records.values()), default=0)
+    return delay * 1000, in_flight, world, counts, mix, actual
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=12345)
     parser.add_argument("--iterations", type=int, default=25)
-    parser.add_argument("--mode", choices=["default"], default="default")
+    parser.add_argument("--mode", choices=["default", "large-values", "large-batch", "recovery-crash", "compaction", "disk-full", "crashpoints"], default="default")
     parser.add_argument("--data-dir", type=Path, default=Path.home() / "tmp_test" / "torture_data")
     args = parser.parse_args(argv)
     if not sys.platform.startswith("linux"):
@@ -182,26 +188,36 @@ def main(argv=None):
         parser.error("--iterations must be positive")
     args.data_dir.mkdir(parents=True, exist_ok=True)
     directory = Path(tempfile.mkdtemp(prefix="seed-%s-" % args.seed, dir=args.data_dir))
-    print("seed=%s mode=default evidence=%s" % (args.seed, directory), flush=True)
+    print("seed=%s mode=%s evidence=%s" % (args.seed, args.mode, directory), flush=True)
     histogram, totals, mix = Counter(), Counter(), Counter()
     flying = passed = 0
+    previous = {}
     with open(directory / "oracle.log", "w", encoding="utf-8") as log:
         for number in range(1, args.iterations + 1):
             try:
-                delay, pending, world, counts, operations = iteration(args.seed, number, directory, log)
+                if args.mode in ("default", "large-values", "large-batch"):
+                    initial = previous if args.mode == "default" and (number - 1) % 3 else {}
+                    result = iteration(args.seed, number, directory, log, args.mode, initial)
+                else:
+                    result = modes.iteration(args.mode, args.seed, number, directory, log)
+                delay, pending, world, counts, operations, previous = result
             except AssertionError as exc:
                 message = "FAIL seed=%s iteration=%s: %s" % (args.seed, number, exc)
-                (directory / "failure.txt").write_text(message, encoding="utf-8")
+                (directory / "failure.txt").write_text(message + "\n" + getattr(exc, "details", ""), encoding="utf-8")
                 print(message, flush=True)
                 return 1
-            except (ToolError, OSError, subprocess.TimeoutExpired) as exc:
+            except (ToolError, OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError) as exc:
                 print("TOOL ERROR seed=%s iteration=%s: %s" % (args.seed, number, exc), flush=True)
                 return 2
             passed += 1
             flying += bool(pending)
             histogram[world] += 1
             totals.update(counts)
+            largest = max(mix.get("max_batch", 0), operations.pop("max_batch", 0))
             mix.update(operations)
+            mix["max_batch"] = largest
+            log.write(json.dumps({"iteration": number, "event": "PASS", "world": world}) + "\n")
+            log.flush()
             print("iteration=%d kill_ms=%.3f awaiting_response=%s world=%d ACKs=%s PASS" %
                   (number, delay, pending, world, counts), flush=True)
     print("SUMMARY PASS=%d/%d kills_awaiting_response=%.1f%% ACKs=%s mix=%s worlds=%s" %

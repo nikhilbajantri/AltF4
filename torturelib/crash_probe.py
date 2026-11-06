@@ -1,29 +1,12 @@
-"""Temporary subprocess adapter until the top-level CLI is implemented.
-
-Only this adapter touches the engine: open, read-only check, then final dump.
-The runner and expected-state oracle do not import storage code.
-"""
+"""Compatibility adapter: all database access goes through the public CLI."""
 import json
 import sys
-from src.engine import KVDB
-from src.scan import check_file
+from torturelib.protocol import recovered
 
 
 def main():
-    path = sys.argv[1]
-    db = KVDB(path)
-    db.close()
-    ok, message = check_file(path)
-    if not ok or message != "OK":
-        # Recovery must remove a torn tail, not merely tolerate one. Accepting
-        # "OK torn-tail=..." here would hide a broken truncation step.
-        raise RuntimeError("check: " + message)
-    db = KVDB(path)
-    try:
-        print(json.dumps({"check": message,
-                          "items": [[k.hex(), v.hex()] for k, v in sorted(db.items())]}))
-    finally:
-        db.close()
+    actual = recovered(sys.argv[1])
+    print(json.dumps({"check": "OK", "items": [[k.hex(), v.hex()] for k, v in sorted(actual.items())]}))
 
 
 if __name__ == "__main__":
