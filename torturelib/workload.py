@@ -29,7 +29,7 @@ def generate(seed, iteration, writer, count=100, mode="default"):
                 tag = "%s:%s:%s:%s:" % (seed, iteration, op_id, item)
                 filler = hashlib.sha256(tag.encode()).hexdigest().encode()
                 length = 1_048_576 if mode == "large-values" and number == 0 else (
-                    131_072 if mode == "large-values" else 96 if size > 5 else rng.randint(128, 4096))
+                    131_072 if mode == "large-values" else 96 if size > 5 else (rng.randint(65_536, 262_144) if rng.random() < .5 else rng.randint(128, 4096)))
                 value = (tag.encode() + filler * ((length // len(filler)) + 1))[:length]
                 ops.append(("put", key, value))
         result.append((op_id, ops))
