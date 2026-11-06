@@ -1,9 +1,8 @@
 """Tests for src/engine.py. Owner: Varsha.
 
-Databases are created under tempfile's default dir (normally /tmp). On many
-Linux setups /tmp is tmpfs (check with `df -T /tmp`), where fsync is nearly
-free, so timings here say nothing about ext4 durability cost. Crash-point
-tests use SIGKILL, which keeps the page cache, so they are valid on tmpfs too.
+Databases are created under tests.util.test_dir() ($KVDB_TEST_DIR or
+~/tmp_test), a real disk, never /tmp: /tmp is often tmpfs (`df -T /tmp`),
+where fsync is free. Crash-point tests use SIGKILL, which keeps the page cache.
 """
 
 import os
@@ -20,6 +19,7 @@ from unittest import mock
 
 from src import format as fmt
 from src.engine import KVDB
+from tests.util import test_dir
 from src.errors import CorruptError, DiskFull, LockedError, PoisonedError
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class EngineTestCase(unittest.TestCase):
     def setUp(self):
-        self.dir = tempfile.mkdtemp(prefix="kvdb_test_")
+        self.dir = tempfile.mkdtemp(prefix="kvdb_test_", dir=test_dir())
         self.path = os.path.join(self.dir, "t.db")
 
     def tearDown(self):
@@ -161,8 +161,9 @@ class DiskFullTest(EngineTestCase):
         self.assertEqual(self.size(), before)
         db.delete(b"k")  # ends at 904, inside the reserve
         self.assertIsNone(db.get(b"k"))
-        with self.assertRaises(DiskFull):
-            db.batch([("del", b"x%d" % i) for i in range(10)])  # 904 + 96 + 16 > 1000
+        # 904 + 16 + 10*9 > 1000, but k is dead: E5 compacts to 16 bytes and retries
+        db.batch([("del", b"x%d" % i) for i in range(10)])
+        self.assertEqual(self.size(), 16 + 12 + 4 + 10 * 9)
         db.close()
 
 

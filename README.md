@@ -6,7 +6,7 @@ A crash-safe key-value database in Python. Owner of this file: Varsha.
 make build
 
 ## Platform
-Linux only (tested on WSL2 Ubuntu, ext4, repo under ~/). Python 3.10+ standard library only.
+Linux, ext4. Tested on Arch Linux and WSL2 Ubuntu (repo under ~/). Python 3.10+ standard library only.
 
 ## On-disk format (all integers little-endian, append-only)
 HEADER 16 bytes: magic "KVDB0001" (8) | version u32 = 1 (4) | hcrc u32 (4) = crc32 of first 12 bytes
@@ -55,6 +55,26 @@ id prefix before "-" names the writer (w1-17); each writer prefix gets its own w
 
 ## Torture
 ./torture --iterations 500 --seed 12345 [--mode default|large-values|large-batch|recovery-crash|compaction|disk-full|crashpoints]
+
+## Implementation notes
+These add to the contracts above; none of them changes one.
+
+- `KVDB(path, max_bytes=None, auto_compact=True)`: `auto_compact=False` turns off the "dead bytes > 50% of a file > 4 MB" trigger. Compaction on DISKFULL and the compact command always work.
+- Compaction frames: each PUT frame holds at most 4 MiB of payload and at most 10,000 ops (the batch limit).
+- CRC-valid but malformed frame (bad nops, unknown op type, bad klen/vlen, DEL with vlen != 0, payload not matching its length): this is not a torn write, so `open` raises CorruptError and truncates nothing. `check` reports `CORRUPT offset=<n> <reason>`. Only an incomplete frame or a CRC mismatch counts as a torn tail and is truncated.
+- `check` and `inspect` use the read-only scanner in `src/scan.py`. It takes no lock, never truncates and never creates files. `check` also reports CORRUPT if a CRC-valid frame exists within 1 MiB after the stop point (damage in the middle of the file, which `open` would otherwise truncate away).
+- Tests and benchmarks run in `$KVDB_TEST_DIR` or `~/tmp_test` (a real disk, never tmpfs `/tmp`).
+
+## Measured (ext4 on NVMe, Arch Linux, Python 3.14)
+| What | Result |
+|---|---|
+| Recovery (`open`), 1,000,000 keys, ~20-byte values, 37 MB file | ~800 ms |
+| Write 1,000,000 keys as 100 batches of 10,000 | ~1.4 s |
+| `compact()`, 1M live keys + 1M overwrites (74 MB -> 37 MB) | ~2.5 s |
+| `compact()`, 100,000 live keys x 1 KB values (104 MB, no dead bytes) | ~0.4 s |
+| `compact()`, 1M keys all deleted (54 MB -> 16 bytes) | ~8 ms |
+
+Reproduce: `python3 -m tests.bench_recovery` and `python3 -m tests.bench_compact`.
 
 ## Team
 Nikhil: engine, format, crash points. Arsh: serve + torture. Srushti: CLI, inspect, Makefile. Varsha: docs, proof table, tests.
