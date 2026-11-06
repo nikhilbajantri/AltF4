@@ -1,5 +1,8 @@
 """Oracle regressions: reject lost ACKs, partial batches, and invented values."""
 import unittest
+from collections import Counter
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -7,6 +10,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+from unittest import mock
 from torturelib.oracle import match, worlds
 from torturelib.workload import generate, command
 
@@ -76,6 +80,42 @@ class CrashIntegrationTests(unittest.TestCase):
             self.assertTrue(any(op.startswith("w1-") for op in sent))
             self.assertTrue(any(op.startswith("w2-") for op in sent))
             self.assertEqual(sum(e["event"] == "KILL" for e in events), 3)
+
+    def test_slow_exit_after_sigkill_is_a_tool_error_and_the_run_continues(self):
+        # The first post-kill wait times out (a child stuck finishing kernel I/O):
+        # that round is a TOOL ERROR, never a PASS, and the next round still runs.
+        from torturelib import runner
+        real_wait, calls = subprocess.Popen.wait, []
+
+        def wait(proc, timeout=None):
+            if timeout == runner.EXIT_WAIT and not calls:
+                calls.append(proc.pid)
+                raise subprocess.TimeoutExpired(proc.args, timeout)
+            return real_wait(proc, timeout=timeout)
+
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(subprocess.Popen, "wait", wait), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = runner.main(["--iterations", "2", "--seed", "778", "--data-dir", directory])
+            # the stuck round's database is set aside; round 2 starts on a fresh one
+            self.assertTrue(list(Path(directory).glob("*/iteration-0000.db.tool-error")))
+        text = output.getvalue()
+        self.assertEqual(code, 2, text)
+        self.assertIn("TOOL ERROR seed=778 iteration=1: serve pid %d still alive" % calls[0], text)
+        self.assertIn("iteration=2 ", text)
+        self.assertIn("SUMMARY PASS=1/2 TOOL_ERROR=1 FAIL=0", text)
+
+    def test_slow_but_finished_exit_warns_and_passes(self):
+        from torturelib import runner
+        result = (1.0, [], 0, {"w1": 1, "w2": 0}, Counter(max_batch=1, exit_wait_ms=6500), {})
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(runner, "iteration", return_value=result), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = runner.main(["--iterations", "2", "--seed", "5", "--data-dir", directory])
+        text = output.getvalue()
+        self.assertEqual(code, 0, text)
+        self.assertIn("WARN seed=5 iteration=1: serve took 6.5 s to exit after SIGKILL", text)
+        self.assertIn("SUMMARY PASS=2/2 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=6.500", text)
 
     def test_after_return_crash_keeps_value_without_ack(self):
         from src.engine import KVDB

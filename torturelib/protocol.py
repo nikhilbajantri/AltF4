@@ -5,6 +5,11 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+STEP_TIMEOUT = 120  # each post-kill open/check/dump; recovery of 1M keys takes ~1 s
+
+
+class ToolError(Exception):
+    pass
 
 
 def environment():
@@ -26,7 +31,10 @@ def decode(token):
 def recovered(path):
     outputs = {}
     for action in ("open", "check", "dump"):
-        result = cli(action, path)
+        try:
+            result = cli(action, path, timeout=STEP_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            raise ToolError("%s timed out after %d s on %s" % (action, STEP_TIMEOUT, path)) from None
         if result.returncode:
             raise AssertionError("%s failed: %s %s" % (action, result.stdout[:300], result.stderr[:300]))
         outputs[action] = result.stdout

@@ -16,10 +16,16 @@ import time
 from torturelib import oracle, workload, protocol, modes
 
 ROOT = Path(__file__).resolve().parents[1]
+# SIGKILL is delivered at once, but a child inside fsync/writeback exits only when
+# the kernel finishes that I/O; on a loaded disk this has taken more than 5 s.
+EXIT_WAIT, SLOW_EXIT = 60, 5
+
+ToolError = protocol.ToolError
 
 
-class ToolError(Exception):
-    pass
+def database_path(directory, mode, number):
+    group = (number - 1) // 3 if mode == "default" else number
+    return directory / ("iteration-%04d.db" % group)
 
 
 def clean_environment():
@@ -40,10 +46,10 @@ def iteration(seed, number, directory, log, mode="default", initial=None):
     guard, pipe_lock = threading.Lock(), threading.Lock()
     records = {}
     problems = []
-    group = (number - 1) // 3 if mode == "default" else number
-    db_path = directory / ("iteration-%04d.db" % group)
+    db_path = database_path(directory, mode, number)
     delay = 10 ** random.Random("kill:%s:%s" % (seed, number)).uniform(-2.7, 0)
     event_order = 0
+    killed_at = None
 
     def record(event, **fields):
         nonlocal event_order
@@ -140,23 +146,33 @@ def iteration(seed, number, directory, log, mode="default", initial=None):
                 if proc.poll() is not None:
                     raise ToolError("serve exited before the scheduled kill")
                 proc.kill()  # SIGKILL on Linux, never a graceful shutdown.
-            proc.wait(timeout=5)
+                killed_at = time.monotonic()
+            try:
+                proc.wait(timeout=EXIT_WAIT)
+            except subprocess.TimeoutExpired:
+                raise ToolError("serve pid %d still alive %d s after SIGKILL (stat: %s)"
+                                % (proc.pid, EXIT_WAIT, process_state(proc.pid))) from None
+            exit_wait = time.monotonic() - killed_at
         finally:
             stop.set()
-            if proc.poll() is None:
+            if proc.poll() is None and killed_at is None:
                 proc.kill()
-                proc.wait(timeout=5)
+                try:
+                    proc.wait(timeout=EXIT_WAIT)
+                except subprocess.TimeoutExpired:
+                    pass  # still alive: a ToolError is already propagating
             for thread in writers:
                 if thread.ident is not None:
                     thread.join(timeout=5)
             read_thread.join(timeout=5)
-            if any(t.is_alive() for t in writers + [read_thread]):
+            if proc.poll() is not None and any(t.is_alive() for t in writers + [read_thread]):
                 raise ToolError("pipe thread failed to stop after kill")
             try:
                 proc.stdin.close()
             except BrokenPipeError:
                 pass
-            proc.stdout.close()
+            if proc.poll() is not None:  # a stuck child keeps the reader blocked on this pipe
+                proc.stdout.close()
         if proc.returncode != -signal.SIGKILL:
             raise ToolError("child did not exit via SIGKILL: %s" % proc.returncode)
     if problems:
@@ -172,7 +188,23 @@ def iteration(seed, number, directory, log, mode="default", initial=None):
     mix["ERR"] = sum(entry[2] == "ERR" for entry in records.values())
     mix["shared"] = sum(any(op[1] == oracle.SHARED for op in entry[1]) for entry in records.values())
     mix["max_batch"] = max((len(entry[1]) for entry in records.values()), default=0)
+    mix["exit_wait_ms"] = round(exit_wait * 1000, 3)
     return delay * 1000, in_flight, world, counts, mix, actual
+
+
+def process_state(pid):
+    try:
+        with open("/proc/%d/stat" % pid) as stat:
+            return stat.read().split(")", 1)[1].split()[0]  # D = uninterruptible I/O
+    except OSError:
+        return "gone"
+
+
+def quarantine(path):
+    """Move a database a tool error left behind aside, so the next round starts fresh."""
+    for name in (path, Path(str(path) + ".lock")):
+        if name.exists():
+            name.rename(name.with_name(name.name + ".tool-error"))
 
 
 def main(argv=None):
@@ -190,7 +222,8 @@ def main(argv=None):
     directory = Path(tempfile.mkdtemp(prefix="seed-%s-" % args.seed, dir=args.data_dir))
     print("seed=%s mode=%s evidence=%s" % (args.seed, args.mode, directory), flush=True)
     histogram, totals, mix = Counter(), Counter(), Counter()
-    flying = passed = 0
+    flying = passed = tool_errors = 0
+    max_wait = 0.
     previous = {}
     with open(directory / "oracle.log", "w", encoding="utf-8") as log:
         for number in range(1, args.iterations + 1):
@@ -205,10 +238,26 @@ def main(argv=None):
                 message = "FAIL seed=%s iteration=%s: %s" % (args.seed, number, exc)
                 (directory / "failure.txt").write_text(message + "\n" + getattr(exc, "details", ""), encoding="utf-8")
                 print(message, flush=True)
+                summary(number, passed, tool_errors, 1, max_wait, flying, totals, mix, histogram)
                 return 1
             except (ToolError, OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError) as exc:
+                # Not a verdict on the engine: record it, never count it as PASS, and
+                # continue on a fresh database so one stuck child cannot end the run.
+                tool_errors += 1
                 print("TOOL ERROR seed=%s iteration=%s: %s" % (args.seed, number, exc), flush=True)
-                return 2
+                log.write(json.dumps({"iteration": number, "event": "TOOL_ERROR", "error": str(exc)}) + "\n")
+                log.flush()
+                try:
+                    quarantine(database_path(directory, args.mode, number))
+                except OSError:
+                    pass
+                previous = {}
+                continue
+            exit_wait = operations.pop("exit_wait_ms", 0) / 1000
+            max_wait = max(max_wait, exit_wait)
+            if exit_wait > SLOW_EXIT:
+                print("WARN seed=%s iteration=%d: serve took %.1f s to exit after SIGKILL"
+                      % (args.seed, number, exit_wait), flush=True)
             passed += 1
             flying += bool(pending)
             histogram[world] += 1
@@ -216,15 +265,21 @@ def main(argv=None):
             largest = max(mix.get("max_batch", 0), operations.pop("max_batch", 0))
             mix.update(operations)
             mix["max_batch"] = largest
-            log.write(json.dumps({"iteration": number, "event": "PASS", "world": world}) + "\n")
+            log.write(json.dumps({"iteration": number, "event": "PASS", "world": world,
+                                  "exit_wait_s": round(exit_wait, 3)}) + "\n")
             log.flush()
-            print("iteration=%d kill_ms=%.3f awaiting_response=%s world=%d ACKs=%s PASS" %
-                  (number, delay, pending, world, counts), flush=True)
-    print("SUMMARY PASS=%d/%d kills_awaiting_response=%.1f%% ACKs=%s mix=%s worlds=%s" %
-          (passed, args.iterations, 100 * flying / passed, dict(totals), dict(mix), dict(histogram)),
-          flush=True)
+            print("iteration=%d kill_ms=%.3f exit_wait_s=%.3f awaiting_response=%s world=%d ACKs=%s PASS" %
+                  (number, delay, exit_wait, pending, world, counts), flush=True)
+    summary(args.iterations, passed, tool_errors, 0, max_wait, flying, totals, mix, histogram)
     print("Awaiting a response does not prove the engine was inside a write at kill time.", flush=True)
-    return 0
+    return 2 if tool_errors else 0
+
+
+def summary(ran, passed, tool_errors, failures, max_wait, flying, totals, mix, histogram):
+    print("SUMMARY PASS=%d/%d TOOL_ERROR=%d FAIL=%d max_exit_wait_s=%.3f kills_awaiting_response=%.1f%% "
+          "ACKs=%s mix=%s worlds=%s" %
+          (passed, ran, tool_errors, failures, max_wait, 100 * flying / max(passed, 1),
+           dict(totals), dict(mix), dict(histogram)), flush=True)
 
 
 if __name__ == "__main__":
