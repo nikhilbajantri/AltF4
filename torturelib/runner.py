@@ -25,6 +25,10 @@ EXIT_WAIT, SLOW_EXIT = 60, 5
 ToolError = protocol.ToolError
 
 
+class LowSpace(ToolError):
+    """Host disk nearly full: every later round would fail the same way, so stop."""
+
+
 def database_path(directory, mode, number):
     group = (number - 1) // 3 if mode == "default" else number
     return directory / ("iteration-%04d.db" % group)
@@ -242,7 +246,7 @@ def main(argv=None):
                 for volume in [directory, *args.host_storage_dir]:
                     free = shutil.disk_usage(volume).free
                     if free < args.min_free_gib * 1024**3:
-                        raise ToolError("low free space on %s: %.2f GiB; reserve %.2f GiB" %
+                        raise LowSpace("low free space on %s: %.2f GiB; reserve %.2f GiB" %
                                         (volume, free / 1024**3, args.min_free_gib))
                 if args.mode in ("default", "large-values", "large-batch"):
                     initial = previous if args.mode == "default" and (number - 1) % 3 else {}
@@ -263,6 +267,8 @@ def main(argv=None):
                 print("TOOL ERROR seed=%s iteration=%s: %s" % (args.seed, number, exc), flush=True)
                 log.write(json.dumps({"iteration": number, "event": "TOOL_ERROR", "error": str(exc)}) + "\n")
                 log.flush()
+                if isinstance(exc, LowSpace):
+                    return 2
                 try:
                     quarantine(database_path(directory, args.mode, number))
                 except OSError:
