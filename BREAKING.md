@@ -44,6 +44,6 @@ Validation precedes frame writing; the complete frame is synced before index pub
 
 ## Next priorities
 
-1. Run the full 500-round-per-mode qualification on the final demo checkout.
+1. The two-seed 500-round-per-mode qualification passed; repeat it if storage or checker code changes. See FINAL_TEST_REPORT.md.
 2. Compare exact shared-batch checks with independent reference cases and retain search-budget failures as qualification failures.
 3. Rehearse crash-here answers against the final code and verify clean-clone/offline operation.

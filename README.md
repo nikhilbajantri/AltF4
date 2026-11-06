@@ -114,4 +114,8 @@ Seeds reproduce planned operations and kill delays, not OS scheduling or the num
 
 See [docs/review_fixes.md](docs/review_fixes.md) for the current issue-resolution checks. [CRASH_TEST_REPORT.md](CRASH_TEST_REPORT.md) records the earlier campaign against its stated source hashes; it is historical, not a claim about later commits. The targeted suite runs with `python3 -B -m unittest tests.test_crash_campaign -v`.
 
-These are process-crash and injected-I/O checks. Physical power-loss testing, arbitrary media corruption, and the final 500-round-per-mode release gate remain separate work. Keep benchmark/test databases on Linux ext4; the currently open Windows source checkout is not itself an ext4 checkout.
+These are process-crash and injected-I/O checks. The two-seed, 500-round-per-mode gate passed (7,000 rounds); see FINAL_TEST_REPORT.md. Physical power-loss testing and arbitrary media corruption remain separate work. Keep benchmark/test databases on Linux ext4; the currently open Windows source checkout is not itself an ext4 checkout.
+
+## Final qualification
+
+See [FINAL_TEST_REPORT.md](FINAL_TEST_REPORT.md) for the complete test history, before/after shared-batch evidence, the 7,000-round gate, and limitations. From the repository root, `python3 tools/run_final_gate.py --host-storage-dir /mnt/d --host-storage-dir /mnt/c` repeats the gate on this WSL setup with compressed evidence and a 20 GiB reserve. Use the actual Windows volume holding your WSL disk.
