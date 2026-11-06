@@ -30,15 +30,15 @@ flowchart TD
 ```
 
 ## Part 2 Proof table
-| B1 | Crash during a 10-operation batch write | Previous frames plus a partial final frame may be on disk | Recovery should ignore/truncate the incomplete final frame; the batch must not be partly applied | `_write()`; `_scan()`; `fmt.decode_frame()` | Not verified |
-| B2 | Repeat the torn batch-write test | Previous frames plus a partial final frame may be on disk | Reopening should recover valid earlier frames and handle the incomplete tail | `_write()`; `_recover()`; `_scan()` | Not verified |
+| B1 | Crash during a 10-operation batch write | Previous frames and possibly a partial final frame | Recovery checks the frame and should discard an incomplete tail | `_write()`; `_recover()`; `_scan()`; `fmt.decode_frame()` | Not verified |
+| B2 | Repeat the torn batch-write test | Previous frames and possibly a partial final frame | Reopening should recover valid earlier frames and handle the incomplete tail | `_write()`; `_recover()`; `_scan()` | Not verified |
 | B5 | Batch deletes X, puts X, then deletes X | A complete batch frame is on disk | Operations apply first to last, so X should be absent | `_commit()`; `_apply()`; `_scan()` | Not verified |
-| C1 | Crash at `compact_before_rename` | Old database plus a complete, synced `.compact` file | The old database should remain the database used on reopen | `_compact_locked()`; `os.replace()` | Not verified |
-| C4 | Crash at `compact_after_rename` | The database path refers to the compacted file; directory sync has not yet happened | Reopen and check that the database is valid and contains the live keys | `_compact_locked()`; `_fsync_dir()` | Not verified |
-| C5 | Repeat the `compact_after_rename` test | The database path refers to the compacted file | Reopen and compare the live keys and values with the expected data | `_compact_locked()`; `_recover()` | Not verified |
-| E1 | Fill a limited-size database until a put returns `DISKFULL` | Database has reached its configured space limit | The rejected put should not be visible | `_check_space()`; `_commit()` | Not verified |
-| E2 | Send a batch that does not fit | Existing database file; batch should not be appended | None of the rejected batch’s changes should be visible | `_check_space()`; `_commit()` | Not verified |
-| E5 | After `DISKFULL`, delete some keys and put again | Deleted data leaves reclaimable space | A later put should succeed if space is available after compaction or deletion | `_commit()`; `_compact_locked()`; `_check_space()` | Not verified |
+| C1 | Crash at `compact_before_rename` | Old database file plus a complete `.compact` file | The old database remains at the database path; reopening removes the leftover `.compact` file | `_compact_locked()`; `_open_file()`; `os.replace()` | Not verified |
+| C4 | Crash at `compact_after_rename` | The compacted file is at the database path; parent-directory sync has not run yet | Reopen and check that the compacted database contains the live keys | `_compact_locked()`; `_fsync_dir()` | Not verified |
+| C5 | Check the data after `compact_after_rename` | The database path points to the compacted file | Compare reopened keys and values with the expected live data | `_compact_locked()`; `_recover()` | Not verified |
+| E1 | Fill a size-limited database until a put returns `DISKFULL` | Database is at its configured size limit | A rejected put should not be written or visible | `_check_space()`; `_commit()` | Not verified |
+| E2 | Send a batch that does not fit | Existing database plus a batch too large for the remaining allowed space | The rejected batch should not be appended; none of its changes should be visible | `_check_space()`; `_commit()` | Not verified |
+| E5 | After `DISKFULL`, delete keys and try a put again | Deleted records leave dead space that may be reclaimed | The later put should succeed if compaction frees enough space | `_commit()`; `_compact_locked()`; `_check_space()` | Not verified |
 | ID | Scenario | Disk state | Mechanism | Where in code | Verified by |
 |----|----------|------------|-----------|---------------|-------------|
 | A1 | | | | | |
