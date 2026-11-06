@@ -1,0 +1,15 @@
+test_actual_later_frame_wins_over_embedded_frame (tests.test_scan_boundaries.BoundaryScanTests.test_actual_later_frame_wins_over_embedded_frame) ... ok
+test_bad_crc_value_containing_frame_is_not_midfile_proof (tests.test_scan_boundaries.BoundaryScanTests.test_bad_crc_value_containing_frame_is_not_midfile_proof) ... ok
+test_crc_valid_malformed_frame_at_real_boundary_is_corrupt (tests.test_scan_boundaries.BoundaryScanTests.test_crc_valid_malformed_frame_at_real_boundary_is_corrupt) ... ok
+test_truncated_value_containing_frame_is_a_torn_tail (tests.test_scan_boundaries.BoundaryScanTests.test_truncated_value_containing_frame_is_a_torn_tail) ... ok
+test_clean (tests.test_scan.ScanTest.test_clean) ... ok
+test_corrupt_frame (tests.test_scan.ScanTest.test_corrupt_frame) ... ok
+test_damage_mid_file_reports_later_frame (tests.test_scan.ScanTest.test_damage_mid_file_reports_later_frame) ... ok
+test_header_prefix_and_bad_header (tests.test_scan.ScanTest.test_header_prefix_and_bad_header) ... ok
+test_torn_tail (tests.test_scan.ScanTest.test_torn_tail) ... ok
+test_works_while_database_is_open (tests.test_scan.ScanTest.test_works_while_database_is_open) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.065s
+
+OK

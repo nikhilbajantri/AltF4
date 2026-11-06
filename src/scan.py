@@ -73,17 +73,30 @@ def _scan(m, size):
         ops, nxt = r
         yield Frame(pos, nxt - pos, "ok", len(ops), [(t, k, n) for t, k, _, n in ops])
         pos = nxt
-    yield Tail(pos, size - pos, _find_later_frame(m, pos + 1, size))
+    later = None
+    if size - pos >= fmt.FRAME_HDR_SIZE:
+        length, _ = fmt.FRAME_HDR.unpack_from(m, pos)
+        later = _find_later_frame(m, pos + fmt.FRAME_HDR_SIZE + length, size)
+    yield Tail(pos, size - pos, later)
 
 
 def _find_later_frame(m, start, size):
-    """Byte-by-byte search for a CRC-valid frame past the stop point (mid-file damage)."""
-    for p in range(start, min(size, start + LATER_FRAME_SEARCH)):
+    """Check declared outer-frame boundaries, never arbitrary value bytes.
+
+    Damaged length fields can hide later records. With arbitrary binary values
+    and no separate framing marker, byte-searching cannot resolve that ambiguity.
+    This is a bounded diagnostic, not a general media-corruption detector.
+    """
+    position = start
+    limit = min(size, start + LATER_FRAME_SEARCH)
+    while position < limit and size - position >= fmt.FRAME_HDR_SIZE:
         try:
-            if fmt.decode_frame(m, p, size) is not None:
-                return p
+            if fmt.decode_frame(m, position, size) is not None:
+                return position
         except CorruptError:
-            return p  # CRC-valid, so real frame bytes, even if malformed
+            return position  # CRC-valid malformed frame at an outer boundary
+        length, _ = fmt.FRAME_HDR.unpack_from(m, position)
+        position += fmt.FRAME_HDR_SIZE + length
     return None
 
 

@@ -33,3 +33,9 @@
 | ID | Reproduction | Finding | Resolution | Status |
 |---|---|---|---|---|
 | ARSH-004 | 8/40 MiB batches with tracemalloc; capped database; 10,000 references to a shared 1 MiB value | Whole-frame copies were allocated before cap rejection; input iterators were fully consumed | Preflight size checks, bounded frame chunks with original CRC, capped operation collection, rollback on mid-write allocation error | Implemented on feat-arsh; docs/batch_memory_review.md records results and remaining input-RAM limits |
+
+## Final scanner review
+
+| ID | Reproduction | Finding | Resolution | Status |
+|---|---|---|---|---|
+| ARSH-005 | A value contains a CRC-valid nested record and its outer frame is truncated or CRC-bad | Byte-by-byte resynchronization reports false mid-file corruption or the nested record's offset | Follow declared outer-frame boundaries; preserve real later-record and malformed-frame checks; inspection stays read-only | Fixed; 143-test full suite passes; docs/scanner_fix_report.md |
