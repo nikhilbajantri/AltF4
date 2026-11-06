@@ -41,13 +41,13 @@ Appending does not change the database directory entry; syncing the database fil
 5. Input and queued work still use RAM. Encoding memory changed from 80.1 MiB to 8.1 MiB; see `docs/batch_memory_review.md`.
    
 ## Failures found and detector trials
-- Zero-progress `pwrite` hung the engine; commit `aa46909` adds a progress guard and regression coverage.
-- The recovery probe accepted an unrepaired torn tail; strict post-recovery checking now requires exactly `OK`. Evidence: `docs/review_fixes.md`.
-- Default random kills missed skipped truncation; review R-04 added deliberate torn-write trials. Seed `12345` detects the planted omission at iteration 1.
-- A slow exit after SIGKILL caused a TOOL ERROR at iteration 116 after a 60-second wait; commit `09e69ec` records the fix.
-- The WSL disk filled during the 7,000-round gate; commit `4bc6000` adds a free-space check.
-- Coverage tuning moved coverage from 71% to 84%; commit `b4bd0be`.
-- PR #16 found duplicate dump output; issue #17 records CLI gaps.
+- Zero-progress `pwrite` hung the engine. Commit `aa46909` added a progress guard and regression coverage.
+- Default random kills missed skipped truncation. Review R-04 added deliberate torn-write trials; seed `12345` detects the planted omission at iteration 1.
+- A slow exit after SIGKILL caused a TOOL ERROR at iteration 116 after a 60-second wait. Commit `09e69ec` records the fix.
+- The WSL disk filled during the 7,000-round gate. Commit `4bc6000` added a free-space check.
+- Coverage was 71%; coverage tuning raised it to 84%. Commit `b4bd0be` records the change.
+- PR #16 reported duplicate dump output.
+- Issue #17 records CLI gaps.
 
 ## Next priorities
 
