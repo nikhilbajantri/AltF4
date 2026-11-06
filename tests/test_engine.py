@@ -109,6 +109,33 @@ class BasicTest(EngineTestCase):
         db.close()
 
 
+    def test_reader_sees_batch_all_or_nothing(self):
+        # D4: batches set k00..k19 to one generation. Gets in batch order can only
+        # see the same or newer generations; a half-applied batch (ops apply in
+        # order) would show k00 newer than k19, or an items() snapshot mixing two.
+        db = KVDB(self.path)
+        keys = [b"k%02d" % i for i in range(20)]
+        db.batch([("put", k, b"0") for k in keys])
+        stop, bad = threading.Event(), []
+
+        def reader():
+            while not stop.is_set():
+                gens = [int(db.get(k)) for k in keys]
+                snap = {int(v) for k, v in db.items() if k in keys}
+                if gens != sorted(gens) or len(snap) != 1:
+                    bad.append((gens, snap))
+                    return
+
+        t = threading.Thread(target=reader)
+        t.start()
+        for g in range(1, 300):
+            db.batch([("put", k, b"%d" % g) for k in keys])
+        stop.set()
+        t.join()
+        db.close()
+        self.assertEqual(bad, [])
+
+
 class TornTailTest(EngineTestCase):
     def test_truncate_one_byte(self):
         db = KVDB(self.path)

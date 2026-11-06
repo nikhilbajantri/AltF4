@@ -13,6 +13,12 @@ import shutil
 import tempfile
 import time
 
+# Support both python3 tests/... and python3 -m tests....
+import sys
+from pathlib import Path
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from src.engine import KVDB
 from tests.util import test_dir
 

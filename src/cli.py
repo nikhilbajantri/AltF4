@@ -1,195 +1,104 @@
-
-"""Command-line interface for ./kvdb.
-
-Owner: Srushti
-"""
-
+"""Command-line interface for the crash-safe key-value database."""
 import argparse
-from src.engine import KVDB
-from src.scan import check_file
+import os
+import sys
+
+from src.errors import CorruptError, DiskFull, LockedError, PoisonedError
+from src.serve import decode_token, encode_token
+
+# These commands read an existing database; they must not create one.
+NEEDS_EXISTING = ("get", "del", "dump", "check", "inspect", "compact")
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="AltF4 Key-Value Database"
-    )
-
-    subparsers = parser.add_subparsers(
-        dest="command", required=True
-    )
-
-    # OPEN command
-    open_parser = subparsers.add_parser("open")
-    open_parser.add_argument("path")
-    open_parser.add_argument("--max-bytes", type=int, default=None)
-
-    # PUT command
-    put_parser = subparsers.add_parser("put")
-    put_parser.add_argument("path")
-    put_parser.add_argument("key")
-    put_parser.add_argument("value")
-    get_parser = subparsers.add_parser("get")
-    get_parser.add_argument("path")
-    get_parser.add_argument("key")
-
-    # DELETE command
-    del_parser = subparsers.add_parser("del")
-    del_parser.add_argument("path")
-    del_parser.add_argument("key")
-
-    # DUMP command
-    dump_parser = subparsers.add_parser("dump")
-    dump_parser.add_argument("path")
-    check_parser = subparsers.add_parser("check")
-    check_parser.add_argument("path")
-    dump_parser = subparsers.add_parser("dump")
-    dump_parser.add_argument("path")
-    
-    batch_parser = subparsers.add_parser("batch")
-    batch_parser.add_argument("path")
-    batch_parser.add_argument("file") 
-
-    args = parser.parse_args()
+def parse_batch_line(line):
+    """"put <key> <value>" (the value is the rest of the line, spaces kept) or "del <key>"."""
+    line = line.rstrip("\r\n")
+    if line.startswith("put "):
+        fields = line.split(" ", 2)
+        if len(fields) == 3:
+            return ("put", decode_token(fields[1]), decode_token(fields[2]))
+    fields = line.split()
+    if len(fields) == 2 and fields[0] == "del":
+        return ("del", decode_token(fields[1]))
+    raise ValueError("invalid batch line")
 
 
-    if args.command == "open":
-        db = None
-        try:
-            db = KVDB(args.path, max_bytes=args.max_bytes)
-            stats = db.stats
-            print(
-                f"keys={stats['keys']} "
-                f"recovery_ms={stats['recovery_ms']}"
-            )
-        except Exception as e:
-            print(f"ERR {e}")
-            raise SystemExit(1)
-        finally:
-            if db is not None:
-                db.close()
-
-    elif args.command == "put":
-        db = None
-        try:
-            db = KVDB(args.path)
-            db.put(args.key.encode(), args.value.encode())
-            print("OK")
-        except Exception as e:
-            print(f"ERR {e}")
-            raise SystemExit(1)
-        finally:
-            if db is not None:
-                db.close()
-
-    elif args.command == "get":
-        db = None
-        try:
-            db = KVDB(args.path)
-            value = db.get(args.key.encode())
-
-            if value is None:
-                print("NOTFOUND")
-            else:
-                print(value.decode())
-
-        except Exception as e:
-            print(f"ERR {e}")
-            raise SystemExit(1)
-
-        finally:
-            if db is not None:
-                db.close()
-
-    elif args.command == "del":
-        db = None
-        try:
-            db = KVDB(args.path)
-            db.delete(args.key.encode())
-            print("OK")
-
-        except Exception as e:
-            print(f"ERR {e}")
-            raise SystemExit(1)
-
-        finally:
-            if db is not None:
-                db.close()
-
-    elif args.command == "dump":
-        db = None
-        try:
-            db = KVDB(args.path)
-
-            for key, value in sorted(db.items()):
-                print(f"{key.decode()}\t{value.decode()}")
-
-        except Exception as e:
-            print(f"ERR {e}")
-            raise SystemExit(1)
-
-        finally:
-            if db is not None:
-                db.close()
-
-    elif args.command == "batch":
-        db = None
-        try:
-            ops = []
-
-            with open(args.file, "r", encoding="utf-8") as f:
-                for line_number, line in enumerate(f, start=1):
-                    parts = line.strip().split()
-
-                    if not parts:
-                        continue
-
-                    if parts[0] == "put" and len(parts) == 3:
-                        ops.append((
-                            "put",
-                            parts[1].encode(),
-                            parts[2].encode()
-                        ))
-
-                    elif parts[0] == "del" and len(parts) == 2:
-                        ops.append((
-                            "del",
-                            parts[1].encode()
-                        ))
-
-                    else:
-                        raise ValueError(
-                            f"Invalid batch instruction at line {line_number}"
-                        )
-
-            # Validate the complete batch before opening the database.
-            from src.format import validate_ops
-            validate_ops(ops)
-
-            db = KVDB(args.path)
-            db.batch(ops)
-            print("OK")
-
-        except Exception as e:
-            print(f"ERR {e}")
-            raise SystemExit(1)
-
-        finally:
-            if db is not None:
-                db.close()
-    
-
-    elif args.command == "check":
-        try:
+def main(argv=None):
+    parser = argparse.ArgumentParser(prog="kvdb")
+    subs = parser.add_subparsers(dest="command", required=True)
+    for name in ("open", "put", "get", "del", "batch", "dump", "check", "serve", "inspect", "compact"):
+        sub = subs.add_parser(name)
+        sub.add_argument("path")
+        sub.add_argument("--max-bytes", type=int)
+        if name in ("put", "get", "del"):
+            sub.add_argument("key")
+        if name == "put":
+            sub.add_argument("value")
+        if name == "batch":
+            sub.add_argument("file")
+    args = parser.parse_args(argv)
+    if args.max_bytes is not None and args.max_bytes < 16:
+        parser.error("--max-bytes must be at least 16")
+    if args.command in NEEDS_EXISTING and not os.path.exists(args.path):
+        print("ERR not found")
+        return 1
+    try:
+        if args.command == "serve":
+            from src.serve import main as serve_main
+            options = [args.path]
+            if args.max_bytes is not None:
+                options += ["--max-bytes", str(args.max_bytes)]
+            return serve_main(options)
+        if args.command == "check":
+            from src.scan import check_file
             ok, message = check_file(args.path)
             print(message)
-
-            if not ok:
-                raise SystemExit(1)
-
-        except Exception as e:
-            print(f"CORRUPT {e}")
-            raise SystemExit(1)
+            return 0 if ok else 1
+        if args.command == "inspect":
+            from src.inspect_cmd import inspect
+            return inspect(args.path)
+        from src.engine import KVDB
+        ops = None
+        if args.command == "batch":
+            with open(args.file, encoding="utf-8") as source:
+                ops = [parse_batch_line(line) for line in source if line.strip()]
+            from src.format import validate_ops
+            validate_ops(ops)
+        db = KVDB(args.path, max_bytes=args.max_bytes)
+        try:
+            if args.command == "open":
+                stats = db.stats
+                print("keys=%d recovery_ms=%.3f" % (stats["keys"], stats["recovery_ms"]))
+            elif args.command == "put":
+                db.put(decode_token(args.key), decode_token(args.value))
+                print("OK")
+            elif args.command == "get":
+                value = db.get(decode_token(args.key))
+                print("NOTFOUND" if value is None else encode_token(value))
+            elif args.command == "del":
+                db.delete(decode_token(args.key))
+                print("OK")
+            elif args.command == "batch":
+                db.batch(ops)
+                print("OK")
+            elif args.command == "dump":
+                for key, value in sorted(db.items()):
+                    print(encode_token(key) + "\t" + encode_token(value))
+            elif args.command == "compact":
+                before = db.stats["file_bytes"]
+                db.compact()
+                print("before=%d after=%d" % (before, db.stats["file_bytes"]))
+        finally:
+            db.close()
+        return 0
+    except (ValueError, UnicodeError):
+        print("ERR INVALID")
+    except (DiskFull, LockedError, PoisonedError, CorruptError, OSError) as exc:
+        reason = {DiskFull: "DISKFULL", LockedError: "LOCKED", PoisonedError: "POISONED",
+                  CorruptError: "CORRUPT"}.get(type(exc), "IO")
+        print("ERR " + reason)
+    return 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
