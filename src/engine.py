@@ -141,12 +141,29 @@ class KVDB:
             if not fmt.check_header(m):
                 raise CorruptError(0, "bad header")
             stop = self._scan(m, size)
-        if stop < size:
+            guarded = (stop > fmt.HEADER_SIZE and size == stop + 1
+                       and m[stop:stop + 1] == fmt.TAIL_GUARD)
+        if stop < size and not guarded:
             crash.point("recovery_before_truncate")  # disk: valid frames + torn tail
             os.ftruncate(self._fd, stop)
+            self._restore_tail_guard(stop)
             os.fsync(self._fd)
-            crash.point("recovery_after_truncate")  # disk: valid frames only, durable
+            crash.point("recovery_after_truncate")  # disk: valid prefix + guard, synced
+        elif not guarded and self._restore_tail_guard(stop):
+            # Legacy files and a manually removed guard need no replay changes.
+            os.fsync(self._fd)
         return stop
+
+    def _restore_tail_guard(self, end):
+        if end == fmt.HEADER_SIZE:
+            return False  # Empty databases remain a 16-byte header.
+        if self.max_bytes is not None and end + 1 > self.max_bytes:
+            # An imported legacy file may already fill/exceed a newly set cap.
+            # Keep it readable without growing past that cap. New writes reserve
+            # their guard; compacting can install one when sufficient room exists.
+            return False
+        _pwrite_all(self._fd, fmt.TAIL_GUARD, end)
+        return True
 
     def _scan(self, m, size):
         pos = fmt.HEADER_SIZE
@@ -205,7 +222,7 @@ class KVDB:
         if self.max_bytes is None:
             return
         reserve = 0 if delete_only else min(65536, self.max_bytes // 10)
-        if self.end + frame_len > self.max_bytes - reserve:
+        if self.end + frame_len + len(fmt.TAIL_GUARD) > self.max_bytes - reserve:
             raise DiskFull("frame of %d bytes does not fit" % frame_len)
 
     def _write(self, frame):
@@ -216,13 +233,15 @@ class KVDB:
                 _pwrite_all(self._fd, prefix, self.end)
                 crash.kill()  # disk: previous frames + partial frame
             _pwrite_all(self._fd, frame, self.end)
+            _pwrite_all(self._fd, fmt.TAIL_GUARD, self.end + len(frame))
             crash.point("after_write")  # disk: full frame in page cache, not fsynced
             os.fsync(self._fd)
             crash.point("after_fsync")  # disk: frame durable, not yet indexed or ACKed
         except (OSError, MemoryError) as write_error:
             self._poisoned = True
             try:
-                os.ftruncate(self._fd, self.end)
+                os.ftruncate(self._fd, self.end + (self.end > fmt.HEADER_SIZE))
+                self._restore_tail_guard(self.end)
                 os.fsync(self._fd)
             except OSError as rollback_error:
                 # A complete frame may still be replayable. Never promise that
@@ -279,6 +298,8 @@ class KVDB:
         try:
             try:
                 new_index, new_end = self._copy_live(fd)
+                if new_end > fmt.HEADER_SIZE:
+                    _pwrite_all(fd, fmt.TAIL_GUARD, new_end)
                 os.fsync(fd)
             finally:
                 os.close(fd)
@@ -325,7 +346,7 @@ class KVDB:
 
     def _write_compact_frame(self, fd, ops, pos, new_index):
         frame, offsets = fmt.encode_frame(ops)
-        if self.max_bytes is not None and pos + len(frame) > self.max_bytes:
+        if self.max_bytes is not None and pos + len(frame) + len(fmt.TAIL_GUARD) > self.max_bytes:
             raise DiskFull("compacted file does not fit in max_bytes")
         _pwrite_all(fd, frame, pos)
         for (_, key, value), rel in zip(ops, offsets):
@@ -337,7 +358,7 @@ class KVDB:
         with self._lock:
             return {
                 "keys": len(self._index),
-                "file_bytes": self.end,
+                "file_bytes": os.fstat(self._fd).st_size,
                 "dead_bytes": self._dead_bytes,
                 "recovery_ms": self.recovery_ms,
             }

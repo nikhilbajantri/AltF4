@@ -1,0 +1,6 @@
+seed=31337 extra_batches=1 kill_delay_ms=9.1 serve_exit=-9 write_s=3.8
+in_flight=w1-101 (not ACKed)
+open: keys=1010000 recovery_ms=681.448 (wall 1183.8 ms, includes interpreter start)
+check: OK
+keys found=1010000 keys ACKed=1010000 missing ACKed=0 unexpected=0
+PASS

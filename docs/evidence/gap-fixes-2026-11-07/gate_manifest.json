@@ -1,0 +1,281 @@
+{
+  "start": "2026-11-06T20:01:19.279740+00:00",
+  "iterations": 500,
+  "seeds": [
+    2026110701,
+    2026110702
+  ],
+  "sources": {
+    "src/__init__.py": "05b373884c3770b219d615ea5ca6dc578d03dcb43d5cfbbcfb2798180f4cfb0e",
+    "src/crash.py": "41d942e9331bded3156b37748062b51290905be2985227ed286a802b72c0e5e5",
+    "src/format.py": "0ca24008924e744168580dcae66fffa2a4b85fdb74f1ce4937a63c6703e995d7",
+    "src/cli.py": "8a0e22ca2ee05c1b1ec9cb701e90a91a1d3e5bbbf78f45e78f0516b77e504796",
+    "src/serve.py": "d835fde802fba553c176a2e61a62d2c96adb2d7365f421561388c48bf976889d",
+    "src/engine.py": "a1a37256fd4655ada87124eb3615310f351c76e7798f86d2b2097b3e24e296eb",
+    "src/engine_fake.py": "88ecb3b97379d8c61e612262d0d3b000430b758729ef51aec4bc47d4ee58bf5e",
+    "src/scan.py": "57e12aabaeb38a476c67e47abf6695e77b3c9f897ef5c32e60dd65d8faa3f101",
+    "src/inspect_cmd.py": "ebf75c3777ed957a7661504496d33b8c02c055bab396a998cffad1a1ebbdf94e",
+    "src/errors.py": "52a20c26ca795318a06456d9acaa4c56b8bc110d630e2e6de826f498b2c5a524",
+    "torturelib/__init__.py": "b9eb7180789516bfd27f10cd14c53b829b1f2b44f6f600fe19f365b83cdf2cd7",
+    "torturelib/protocol.py": "3339c5fa485443410ce3171cf6c1ad8d9a2f733ffcb7a2fcfcf4eda6d0434638",
+    "torturelib/modes.py": "ef023717700f6d6c6599c481d4fff75ba3488061c6dd00bd274aba20ee321c70",
+    "torturelib/workload.py": "c071b236051d2c9e79959909d0981de2fd981a778463a271c6f5422a7604fb23",
+    "torturelib/crash_probe.py": "94fb1437b0112072a80973483de290512338305dbfcbc6b69301053e31d8c218",
+    "torturelib/runner.py": "c2a5d69bb715e4ca8b25b12a2a3bc4f43bd4ef2f78bf9bd26209f302e1d1afb0",
+    "torturelib/oracle.py": "e5564177a9fe6ce6548859054098f91a10b5a6af46c966bb67d2b34bd1dcb2f0",
+    "tools/run_final_gate.py": "c82ccbd81dcd8fa74de609cb3751a861d763fbf510156981f8503779f34006b0",
+    "kvdb": "d7d6dd1d39773dc1078a9348f6588461b0073487a105fbe396fa2c5eb334f8b2",
+    "torture": "b3b4f44581571302c8f1565c4ea8bf0e1f743812a9a25b7e35d5d1477116f68d"
+  },
+  "results": [
+    {
+      "mode": "recovery-crash",
+      "seed": 2026110701,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/recovery-crash-2026110701.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=498 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=500 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 500, 'w2': 0} mix={'recovery_mid_scan': 501, 'max_batch': 0, 'recovery_before_truncate': 501, 'recovery_after_truncate': 498} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 500, 'w2': 0} mix={'recovery_mid_scan': 501, 'max_batch': 0, 'recovery_before_truncate': 501, 'recovery_after_truncate': 498} worlds={0: 500}",
+      "seconds": 133.29
+    },
+    {
+      "mode": "large-values",
+      "seed": 2026110701,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/large-values-2026110701.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=64.682 exit_wait_s=0.001 awaiting_response=['w1-6'] world=0 ACKs={'w1': 6, 'w2': 5} PASS",
+        "iteration=498 kill_ms=5.279 exit_wait_s=0.003 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=4.881 exit_wait_s=0.007 awaiting_response=['w1-0', 'w2-0'] world=0 ACKs={'w1': 0, 'w2': 0} PASS",
+        "iteration=500 kill_ms=208.173 exit_wait_s=0.004 awaiting_response=[] world=0 ACKs={'w1': 11, 'w2': 11} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.017 kills_awaiting_response=69.2% ACKs={'w1': 2493, 'w2': 2281} mix={'put': 5681, 'ERR': 358, 'shared': 463, 'max_batch': 1} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.017 kills_awaiting_response=69.2% ACKs={'w1': 2493, 'w2': 2281} mix={'put': 5681, 'ERR': 358, 'shared': 463, 'max_batch': 1} worlds={0: 500}",
+      "seconds": 210.45
+    },
+    {
+      "mode": "compaction",
+      "seed": 2026110701,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/compaction-2026110701.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=498 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=500 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=100.0% ACKs={'w1': 500, 'w2': 0} mix={'compact_mid_copy': 125, 'max_batch': 0, 'compact_before_rename': 125, 'compact_after_rename': 125, 'compact_after_swap': 125} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=100.0% ACKs={'w1': 500, 'w2': 0} mix={'compact_mid_copy': 125, 'max_batch': 0, 'compact_before_rename': 125, 'compact_after_rename': 125, 'compact_after_swap': 125} worlds={0: 500}",
+      "seconds": 114.23
+    },
+    {
+      "mode": "default",
+      "seed": 2026110701,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/default-2026110701.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=64.682 exit_wait_s=0.007 awaiting_response=['w1-5'] world=0 ACKs={'w1': 5, 'w2': 6} PASS",
+        "iteration=498 kill_ms=5.279 exit_wait_s=0.003 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=4.881 exit_wait_s=0.001 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=500 kill_ms=208.173 exit_wait_s=0.001 awaiting_response=['w2-3'] world=0 ACKs={'w1': 3, 'w2': 3} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.031 kills_awaiting_response=95.4% ACKs={'w1': 2628, 'w2': 2411} mix={'batch': 2231, 'put': 2986, 'ERR': 211, 'shared': 436, 'max_batch': 10000, 'del': 725} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.031 kills_awaiting_response=95.4% ACKs={'w1': 2628, 'w2': 2411} mix={'batch': 2231, 'put': 2986, 'ERR': 211, 'shared': 436, 'max_batch': 10000, 'del': 725} worlds={0: 500}",
+      "seconds": 268.58
+    },
+    {
+      "mode": "crashpoints",
+      "seed": 2026110701,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/crashpoints-2026110701.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=498 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=500 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=64.2% ACKs={'w1': 465, 'w2': 0} mix={'init_before_rename:1': 35, 'max_batch': 0, 'close_mid:1': 36, 'torn_write:2': 13, 'after_write:2': 10, 'compact_after_rename:1': 11, 'compact_after_swap:1': 8, 'compact_mid_copy:2': 14, 'after_return:3': 14, 'after_fsync:3': 10, 'compact_before_rename:3': 8, 'before_write:1': 13, 'recovery_mid_scan:3': 10, 'recovery_after_truncate:1': 36, 'recovery_before_truncate:1': 36, 'after_fsync:1': 12, 'compact_before_rename:2': 14, 'compact_after_swap:2': 14, 'compact_after_rename:2': 14, 'recovery_mid_scan:2': 14, 'after_write:3': 10, 'compact_after_rename:3': 11, 'compact_mid_copy:3': 13, 'after_return:1': 10, 'after_write:1': 16, 'after_return:2': 12, 'torn_write:1': 15, 'after_fsync:2': 13, 'recovery_mid_scan:1': 12, 'compact_mid_copy:1': 8, 'before_write:3': 9, 'compact_after_swap:3': 14, 'before_write:2': 14, 'compact_before_rename:1': 13, 'torn_write:3': 8} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=64.2% ACKs={'w1': 465, 'w2': 0} mix={'init_before_rename:1': 35, 'max_batch': 0, 'close_mid:1': 36, 'torn_write:2': 13, 'after_write:2': 10, 'compact_after_rename:1': 11, 'compact_after_swap:1': 8, 'compact_mid_copy:2': 14, 'after_return:3': 14, 'after_fsync:3': 10, 'compact_before_rename:3': 8, 'before_write:1': 13, 'recovery_mid_scan:3': 10, 'recovery_after_truncate:1': 36, 'recovery_before_truncate:1': 36, 'after_fsync:1': 12, 'compact_before_rename:2': 14, 'compact_after_swap:2': 14, 'compact_after_rename:2': 14, 'recovery_mid_scan:2': 14, 'after_write:3': 10, 'compact_after_rename:3': 11, 'compact_mid_copy:3': 13, 'after_return:1': 10, 'after_write:1': 16, 'after_return:2': 12, 'torn_write:1': 15, 'after_fsync:2': 13, 'recovery_mid_scan:1': 12, 'compact_mid_copy:1': 8, 'before_write:3': 9, 'compact_after_swap:3': 14, 'before_write:2': 14, 'compact_before_rename:1': 13, 'torn_write:3': 8} worlds={0: 500}",
+      "seconds": 85.23
+    },
+    {
+      "mode": "disk-full",
+      "seed": 2026110701,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/disk-full-2026110701.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 29, 'w2': 0} PASS",
+        "iteration=498 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 29, 'w2': 0} PASS",
+        "iteration=499 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 29, 'w2': 0} PASS",
+        "iteration=500 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 29, 'w2': 0} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 14500, 'w2': 0} mix={'ERR': 5000, 'max_batch': 0} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 14500, 'w2': 0} mix={'ERR': 5000, 'max_batch': 0} worlds={0: 500}",
+      "seconds": 160.4
+    },
+    {
+      "mode": "large-values",
+      "seed": 2026110702,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/large-values-2026110702.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=85.833 exit_wait_s=0.003 awaiting_response=['w2-8', 'w1-8'] world=0 ACKs={'w1': 7, 'w2': 8} PASS",
+        "iteration=498 kill_ms=17.312 exit_wait_s=0.001 awaiting_response=['w2-0', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=27.406 exit_wait_s=0.007 awaiting_response=['w2-1', 'w1-2'] world=0 ACKs={'w1': 2, 'w2': 1} PASS",
+        "iteration=500 kill_ms=222.115 exit_wait_s=0.001 awaiting_response=[] world=0 ACKs={'w1': 11, 'w2': 11} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.016 kills_awaiting_response=62.4% ACKs={'w1': 2689, 'w2': 2485} mix={'put': 6070, 'ERR': 411, 'shared': 478, 'max_batch': 1} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.016 kills_awaiting_response=62.4% ACKs={'w1': 2689, 'w2': 2485} mix={'put': 6070, 'ERR': 411, 'shared': 478, 'max_batch': 1} worlds={0: 500}",
+      "seconds": 202.48
+    },
+    {
+      "mode": "default",
+      "seed": 2026110702,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/default-2026110702.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=85.833 exit_wait_s=0.001 awaiting_response=['w1-2', 'w2-1'] world=0 ACKs={'w1': 2, 'w2': 1} PASS",
+        "iteration=498 kill_ms=17.312 exit_wait_s=0.003 awaiting_response=['w2-1', 'w1-2'] world=0 ACKs={'w1': 2, 'w2': 1} PASS",
+        "iteration=499 kill_ms=27.406 exit_wait_s=0.001 awaiting_response=['w1-1', 'w2-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS",
+        "iteration=500 kill_ms=222.115 exit_wait_s=0.001 awaiting_response=['w2-15'] world=0 ACKs={'w1': 15, 'w2': 14} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.032 kills_awaiting_response=92.6% ACKs={'w1': 3148, 'w2': 2961} mix={'batch': 2507, 'put': 3660, 'ERR': 262, 'shared': 535, 'max_batch': 10000, 'del': 908} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.032 kills_awaiting_response=92.6% ACKs={'w1': 3148, 'w2': 2961} mix={'batch': 2507, 'put': 3660, 'ERR': 262, 'shared': 535, 'max_batch': 10000, 'del': 908} worlds={0: 500}",
+      "seconds": 267.66
+    },
+    {
+      "mode": "large-batch",
+      "seed": 2026110701,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/large-batch-2026110701.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=64.682 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS",
+        "iteration=498 kill_ms=5.279 exit_wait_s=0.001 awaiting_response=['w2-0'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=4.881 exit_wait_s=0.004 awaiting_response=['w2-0', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS",
+        "iteration=500 kill_ms=208.173 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.031 kills_awaiting_response=100.0% ACKs={'w1': 702, 'w2': 556} mix={'batch': 1777, 'ERR': 0, 'shared': 0, 'max_batch': 10000} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.031 kills_awaiting_response=100.0% ACKs={'w1': 702, 'w2': 556} mix={'batch': 1777, 'ERR': 0, 'shared': 0, 'max_batch': 10000} worlds={0: 500}",
+      "seconds": 623.42
+    },
+    {
+      "mode": "compaction",
+      "seed": 2026110702,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/compaction-2026110702.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=498 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=500 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=100.0% ACKs={'w1': 500, 'w2': 0} mix={'compact_mid_copy': 125, 'max_batch': 0, 'compact_before_rename': 125, 'compact_after_rename': 125, 'compact_after_swap': 125} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=100.0% ACKs={'w1': 500, 'w2': 0} mix={'compact_mid_copy': 125, 'max_batch': 0, 'compact_before_rename': 125, 'compact_after_rename': 125, 'compact_after_swap': 125} worlds={0: 500}",
+      "seconds": 97.2
+    },
+    {
+      "mode": "recovery-crash",
+      "seed": 2026110702,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/recovery-crash-2026110702.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=498 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=500 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 500, 'w2': 0} mix={'recovery_mid_scan': 501, 'max_batch': 0, 'recovery_before_truncate': 501, 'recovery_after_truncate': 498} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 500, 'w2': 0} mix={'recovery_mid_scan': 501, 'max_batch': 0, 'recovery_before_truncate': 501, 'recovery_after_truncate': 498} worlds={0: 500}",
+      "seconds": 115.24
+    },
+    {
+      "mode": "crashpoints",
+      "seed": 2026110702,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/crashpoints-2026110702.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=498 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=499 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "iteration=500 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=['w2-target'] world=0 ACKs={'w1': 1, 'w2': 0} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=64.2% ACKs={'w1': 464, 'w2': 0} mix={'close_mid:1': 36, 'max_batch': 0, 'compact_mid_copy:1': 15, 'after_write:2': 18, 'torn_write:3': 13, 'compact_after_swap:2': 16, 'before_write:2': 16, 'after_return:1': 12, 'init_before_rename:1': 36, 'recovery_before_truncate:1': 36, 'compact_before_rename:1': 9, 'recovery_mid_scan:3': 18, 'compact_after_rename:3': 10, 'recovery_after_truncate:1': 35, 'after_fsync:3': 15, 'after_write:1': 10, 'before_write:3': 14, 'compact_mid_copy:3': 14, 'after_fsync:2': 11, 'torn_write:2': 11, 'compact_after_rename:1': 10, 'recovery_mid_scan:2': 11, 'compact_after_swap:3': 7, 'after_return:2': 11, 'compact_before_rename:3': 11, 'compact_after_rename:2': 15, 'compact_mid_copy:2': 7, 'recovery_mid_scan:1': 7, 'torn_write:1': 12, 'compact_before_rename:2': 16, 'after_fsync:1': 10, 'after_return:3': 12, 'compact_after_swap:1': 12, 'after_write:3': 8, 'before_write:1': 6} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=64.2% ACKs={'w1': 464, 'w2': 0} mix={'close_mid:1': 36, 'max_batch': 0, 'compact_mid_copy:1': 15, 'after_write:2': 18, 'torn_write:3': 13, 'compact_after_swap:2': 16, 'before_write:2': 16, 'after_return:1': 12, 'init_before_rename:1': 36, 'recovery_before_truncate:1': 36, 'compact_before_rename:1': 9, 'recovery_mid_scan:3': 18, 'compact_after_rename:3': 10, 'recovery_after_truncate:1': 35, 'after_fsync:3': 15, 'after_write:1': 10, 'before_write:3': 14, 'compact_mid_copy:3': 14, 'after_fsync:2': 11, 'torn_write:2': 11, 'compact_after_rename:1': 10, 'recovery_mid_scan:2': 11, 'compact_after_swap:3': 7, 'after_return:2': 11, 'compact_before_rename:3': 11, 'compact_after_rename:2': 15, 'compact_mid_copy:2': 7, 'recovery_mid_scan:1': 7, 'torn_write:1': 12, 'compact_before_rename:2': 16, 'after_fsync:1': 10, 'after_return:3': 12, 'compact_after_swap:1': 12, 'after_write:3': 8, 'before_write:1': 6} worlds={0: 500}",
+      "seconds": 77.21
+    },
+    {
+      "mode": "disk-full",
+      "seed": 2026110702,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/disk-full-2026110702.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 29, 'w2': 0} PASS",
+        "iteration=498 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 29, 'w2': 0} PASS",
+        "iteration=499 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 29, 'w2': 0} PASS",
+        "iteration=500 kill_ms=0.000 exit_wait_s=0.000 awaiting_response=[] world=0 ACKs={'w1': 29, 'w2': 0} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 14500, 'w2': 0} mix={'ERR': 5000, 'max_batch': 0} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 14500, 'w2': 0} mix={'ERR': 5000, 'max_batch': 0} worlds={0: 500}",
+      "seconds": 130.34
+    },
+    {
+      "mode": "large-batch",
+      "seed": 2026110702,
+      "log": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/large-batch-2026110702.log",
+      "pass": true,
+      "exit": 0,
+      "last_lines": [
+        "iteration=497 kill_ms=85.833 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS",
+        "iteration=498 kill_ms=17.312 exit_wait_s=0.001 awaiting_response=['w2-0', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS",
+        "iteration=499 kill_ms=27.406 exit_wait_s=0.001 awaiting_response=['w2-0', 'w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS",
+        "iteration=500 kill_ms=222.115 exit_wait_s=0.001 awaiting_response=['w1-1'] world=0 ACKs={'w1': 1, 'w2': 1} PASS",
+        "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.016 kills_awaiting_response=100.0% ACKs={'w1': 778, 'w2': 622} mix={'batch': 1931, 'ERR': 0, 'shared': 0, 'max_batch': 10000} worlds={0: 500}",
+        "Awaiting a response does not prove the engine was inside a write at kill time."
+      ],
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.016 kills_awaiting_response=100.0% ACKs={'w1': 778, 'w2': 622} mix={'batch': 1931, 'ERR': 0, 'shared': 0, 'max_batch': 10000} worlds={0: 500}",
+      "seconds": 606.66
+    }
+  ],
+  "reserve_gib": 20,
+  "checked_volumes": [
+    "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes",
+    "/mnt/c",
+    "/mnt/d"
+  ],
+  "workers": 4,
+  "commit": "d9d3c2811c01d3da66cd6723cfb8d545ecd676be",
+  "end": "2026-11-06T20:17:56.399318+00:00",
+  "sources_unchanged": true,
+  "success": true
+}

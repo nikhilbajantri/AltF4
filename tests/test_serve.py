@@ -81,7 +81,10 @@ class ServeTests(unittest.TestCase):
         for header in ("batch", "batch w1-1 extra"):
             with self.subTest(header=header):
                 lines = self.session(header + "\nput name Arsh\nend\nget w1-2 name\n")
-                self.assertEqual(lines[-1], "NOTFOUND w1-2")
+                # Different writer prefixes may reply in either order.
+                op_id = header.split()[1] if len(header.split()) > 1 else "-"
+                self.assertCountEqual(lines[1:],
+                                      [f"ERR {op_id} INVALID", "NOTFOUND w1-2"])
                 self.assertFalse(any(line.startswith("ACK") for line in lines))
 
     def test_compact_routes_to_engine(self):

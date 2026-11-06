@@ -31,7 +31,7 @@ class CompactTest(EngineTestCase):
         before = self.size()
         db.compact()
         self.assertLess(self.size(), before)
-        self.assertEqual(self.size(), 16 + 12 + 4 + 7 + 3 + 5)
+        self.assertEqual(self.size(), 16 + 12 + 4 + 7 + 3 + 5 + 1)
         self.assertEqual(db.get(b"hot"), b"v0999")
         db.put(b"after", b"compact")  # writes go to the new file
         db = self.reopen(db)

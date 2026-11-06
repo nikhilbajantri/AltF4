@@ -166,7 +166,8 @@ class CrashCampaignTests(unittest.TestCase):
         final_ops = [("put", b"x", b"first"), ("put", b"y", b"second"), ("del", b"victim")]
         self.child(path, command("w1-final", final_ops) + "quit\n", killed=False)
         complete = path.read_bytes()
-        for cut in range(len(original), len(complete)):
+        # A complete frame without its expendable guard is not a torn frame (F4).
+        for cut in range(len(original) - 1, len(complete) - 1):
             with self.subTest(cut=cut):
                 torn = self.directory / ("cut-%d.db" % cut)
                 torn.write_bytes(complete[:cut])

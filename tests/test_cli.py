@@ -76,7 +76,7 @@ class CLITest(unittest.TestCase):
                 return hashlib.sha256(fh.read()).hexdigest()
         before = digest()
         self.assertEqual(self.kvdb("check", self.path),
-                         (0, "OK torn-tail=3 bytes (open will truncate)\n"))
+                         (0, "OK torn-tail=4 bytes (open will truncate)\n"))
         self.assertEqual(digest(), before)
 
 

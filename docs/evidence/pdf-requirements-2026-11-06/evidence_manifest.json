@@ -1,0 +1,16 @@
+{
+  "pdf_sha256": "06e72694968e3943689d14cc469d615061e5b0471daff9141b1ccf9a3c95c7f3",
+  "checked_commit": "d9d3c2811c01d3da66cd6723cfb8d545ecd676be",
+  "qualified_implementation_unchanged": true,
+  "files": {
+    ".gitattributes": "73fe662883f1bfa72445ac400f366e8861feb9b832603931dd68a3eb025af351",
+    "contract_checks.json": "214996751cc98379ba8d556ddd039903987fbda931774c2f3ecc06c1c7f109ed",
+    "f3-2026110608.txt": "29431bb058bf76f1bded8ebccf96ac7310577b74fe56f7fc9087244a1bbd9251",
+    "f3-2026110609.txt": "c4bf9d5191a7b95ba2ede3064ec21a77256bd5d1f2bdf96fa890b0de7b7b69eb",
+    "f3-31337.txt": "539f9973b2377c93c568d005242619b22b81ac7743aa447775cf864a7cba2b05",
+    "full_suite.txt": "904fc8a8e268f22d0eabd1d96e458fd9d6a3a83fe5230f7ddd3546cd341f2186",
+    "million-delete-compaction.txt": "e4b8b04f62c0697e10b0d05523c633f741d2e1396909233ac64af9f5530f90c6",
+    "recovery_measurements.json": "f8f137ccf9210f53c3b59d231969871b786a1dff18b65a44fbe1a8029368f1f1",
+    "source_hashes.json": "8a2b7ce5dd4a116d49e02324aaad7a8e4718b30f89bda5d8a9d024d67f724042"
+  }
+}

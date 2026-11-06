@@ -1,0 +1,188 @@
+{
+  "run": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e",
+  "tested_commit": "d9d3c2811c01d3da66cd6723cfb8d545ecd676be",
+  "source_hashes_verified": true,
+  "audit_tools_sha256": {
+    "tools/report_ps_acceptance.py": "2d6de135c89561480f067f763c75a21a99e71ae14ae3fdeaa16c4417f8a0d77a",
+    "tools/check_ps_half_batch.py": "7f92d2ee5cbd909b1746b4c411b8af1cd8db4c8ec0f9f0ec7ddb6c999792ed9e"
+  },
+  "unit_tests": 143,
+  "unit_seconds": 242.809,
+  "specific_cases": 6,
+  "crash_rounds": 4000,
+  "kill_records": 6270,
+  "transcripts": [
+    {
+      "path": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/modes/gate-09j6a9lz/compaction-2026110612/seed-2026110612-ovnu_m_k/oracle.log.gz",
+      "sha256": "957eee3c83a42a3ae7bd7f21c81607b7599bbea439b73540585bc247b96941d8",
+      "bytes": 1053133,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "SUBMIT": 1000,
+        "RESULT": 1000,
+        "PASS": 500
+      },
+      "points": {
+        "compact_mid_copy": 125,
+        "compact_before_rename": 125,
+        "compact_after_rename": 125,
+        "compact_after_swap": 125
+      },
+      "mode": "compaction",
+      "seed": 2026110612,
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=100.0% ACKs={'w1': 500, 'w2': 0} mix={'compact_mid_copy': 125, 'max_batch': 0, 'compact_before_rename': 125, 'compact_after_rename': 125, 'compact_after_swap': 125} worlds={0: 500}"
+    },
+    {
+      "path": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/modes/gate-09j6a9lz/crashpoints-2026110612/seed-2026110612-7alj_qoo/oracle.log.gz",
+      "sha256": "88cfd7f8ce601177731949b8f0528800ee2d7d57e2b37c17498189f23a521dc6",
+      "bytes": 338721,
+      "pass_rounds": 500,
+      "kill_records": 571,
+      "events": {
+        "SUBMIT": 1053,
+        "RESULT": 1053,
+        "PASS": 500
+      },
+      "points": {
+        "after_write": 35,
+        "torn_write": 107,
+        "recovery_after_truncate": 35,
+        "close_mid": 36,
+        "recovery_mid_scan": 36,
+        "before_write": 36,
+        "compact_after_rename": 36,
+        "compact_before_rename": 36,
+        "after_fsync": 35,
+        "compact_after_swap": 35,
+        "init_before_rename": 36,
+        "compact_mid_copy": 36,
+        "recovery_before_truncate": 36,
+        "after_return": 36
+      },
+      "mode": "crashpoints",
+      "seed": 2026110612,
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=64.2% ACKs={'w1': 464, 'w2': 0} mix={'after_write:3': 16, 'max_batch': 0, 'recovery_after_truncate:1': 35, 'close_mid:1': 36, 'recovery_mid_scan:1': 18, 'before_write:2': 12, 'compact_after_rename:3': 13, 'compact_before_rename:3': 17, 'after_fsync:1': 11, 'compact_after_swap:1': 13, 'init_before_rename:1': 36, 'torn_write:1': 7, 'compact_mid_copy:3': 13, 'recovery_before_truncate:1': 36, 'after_return:2': 10, 'before_write:1': 15, 'compact_before_rename:1': 9, 'after_return:1': 14, 'after_fsync:2': 15, 'torn_write:2': 17, 'compact_after_swap:2': 13, 'compact_after_rename:2': 14, 'after_return:3': 12, 'after_write:2': 12, 'compact_mid_copy:1': 13, 'torn_write:3': 12, 'recovery_mid_scan:3': 10, 'compact_after_rename:1': 9, 'compact_after_swap:3': 9, 'recovery_mid_scan:2': 8, 'compact_mid_copy:2': 10, 'compact_before_rename:2': 10, 'before_write:3': 9, 'after_fsync:3': 9, 'after_write:1': 7} worlds={0: 500}"
+    },
+    {
+      "path": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/modes/gate-09j6a9lz/default-2026110612/seed-2026110612-4cxgz097/oracle.log.gz",
+      "sha256": "2673e496a3525d6f1d1faf09ab3a265e73daa9292d8932d475b058e4cb66d202",
+      "bytes": 130287907,
+      "pass_rounds": 500,
+      "kill_records": 600,
+      "events": {
+        "RESPONSE": 6195,
+        "SENT": 6362,
+        "KILL": 500,
+        "SUBMIT": 100,
+        "RESULT": 100,
+        "PASS": 500
+      },
+      "points": {
+        "torn_write": 100
+      },
+      "mode": "default",
+      "seed": 2026110612,
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.016 kills_awaiting_response=88.8% ACKs={'w1': 2794, 'w2': 2665} mix={'batch': 2309, 'put': 3226, 'ERR': 236, 'shared': 484, 'max_batch': 10000, 'del': 827} worlds={0: 500}"
+    },
+    {
+      "path": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/modes/gate-09j6a9lz/disk-full-2026110612/seed-2026110612-isn5q8i0/oracle.log.gz",
+      "sha256": "9dd6cc8a8d99dba3fc8d34925360f56dc4729a3202e022d8f247c747baff7489",
+      "bytes": 79566,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "SUBMIT": 1000,
+        "RESULT": 1000,
+        "PASS": 500
+      },
+      "points": {
+        "close_mid": 500
+      },
+      "mode": "disk-full",
+      "seed": 2026110612,
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 14500, 'w2': 0} mix={'ERR': 5000, 'max_batch': 0} worlds={0: 500}"
+    },
+    {
+      "path": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/modes/gate-09j6a9lz/large-batch-2026110612/seed-2026110612-77junwk4/oracle.log.gz",
+      "sha256": "7b1fc301b2fa9a3ff159a92509afc6af20aeb7128d43970a6226adba829cb1c6",
+      "bytes": 585601694,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "RESPONSE": 1819,
+        "SENT": 1840,
+        "KILL": 500,
+        "PASS": 500
+      },
+      "points": {},
+      "mode": "large-batch",
+      "seed": 2026110612,
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.032 kills_awaiting_response=100.0% ACKs={'w1': 745, 'w2': 574} mix={'batch': 1840, 'ERR': 0, 'shared': 0, 'max_batch': 10000} worlds={0: 500}"
+    },
+    {
+      "path": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/modes/gate-09j6a9lz/large-values-2026110612/seed-2026110612-vfd5qutr/oracle.log.gz",
+      "sha256": "cbb7c226c0684ca1c1a4c0b0225a18482588f5ea2b7233df4692dbe106e8eb6c",
+      "bytes": 13682703,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "RESPONSE": 6640,
+        "SENT": 6555,
+        "KILL": 500,
+        "PASS": 500
+      },
+      "points": {},
+      "mode": "large-values",
+      "seed": 2026110612,
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.015 kills_awaiting_response=57.0% ACKs={'w1': 2970, 'w2': 2728} mix={'put': 6555, 'ERR': 442, 'shared': 539, 'max_batch': 1} worlds={0: 500}"
+    },
+    {
+      "path": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/modes/gate-09j6a9lz/recovery-crash-2026110612/seed-2026110612-vjo4h6nt/oracle.log.gz",
+      "sha256": "3cb924e4758dd9d943820395e2c50ea5f40b82dc85929712fc8d560919f16467",
+      "bytes": 74682,
+      "pass_rounds": 500,
+      "kill_records": 2499,
+      "events": {
+        "SUBMIT": 2999,
+        "RESULT": 2999,
+        "PASS": 500
+      },
+      "points": {
+        "recovery_mid_scan": 501,
+        "torn_write": 999,
+        "recovery_before_truncate": 501,
+        "recovery_after_truncate": 498
+      },
+      "mode": "recovery-crash",
+      "seed": 2026110612,
+      "summary": "SUMMARY PASS=500/500 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.000 kills_awaiting_response=0.0% ACKs={'w1': 500, 'w2': 0} mix={'recovery_mid_scan': 501, 'max_batch': 0, 'recovery_before_truncate': 501, 'recovery_after_truncate': 498} worlds={0: 500}"
+    },
+    {
+      "path": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/same_database_f1/oracle.log.gz",
+      "sha256": "5d6eb100fa59617d65c02f6bea2034eb5769d206b0013111cf1f84ee3958cb10",
+      "bytes": 140288818,
+      "pass_rounds": 500,
+      "kill_records": 600,
+      "events": {
+        "RESPONSE": 6964,
+        "SENT": 7156,
+        "KILL": 500,
+        "SUBMIT": 100,
+        "RESULT": 100,
+        "PASS": 500
+      },
+      "points": {
+        "torn_write": 100
+      },
+      "mode": "F1 one persistent database",
+      "seed": 2026110613
+    }
+  ],
+  "known_noncompliance": [
+    "F4: acknowledged last record lost after manual byte truncation",
+    "Torture default is not 500",
+    "Prompt log empty"
+  ],
+  "all_requirements_satisfied": false
+}

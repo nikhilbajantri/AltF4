@@ -33,7 +33,11 @@ class ScanTest(EngineTestCase):
         return records, result
 
     def append(self, data):
-        with open(self.path, "ab") as f:
+        records = list(iter_frames(self.path))
+        with open(self.path, "r+b") as f:
+            if len(records) > 1 and records[-2].status == "ok" and not records[-1].tail_bytes:
+                f.truncate(records[-2].offset + records[-2].length)
+            f.seek(0, os.SEEK_END)
             f.write(data)
 
     def test_clean(self):
@@ -49,7 +53,7 @@ class ScanTest(EngineTestCase):
 
     def test_torn_tail(self):
         self.seed()
-        good = self.size()
+        good = self.size() - len(fmt.TAIL_GUARD)
         frame, _ = fmt.encode_frame([("put", b"c", b"3")])
         self.append(frame[:-3])
         records, result = self.scan()
@@ -59,7 +63,7 @@ class ScanTest(EngineTestCase):
 
     def test_corrupt_frame(self):
         self.seed()
-        good = self.size()
+        good = self.size() - len(fmt.TAIL_GUARD)
         payload = fmt.NOPS.pack(1) + fmt.OP_HDR.pack(9, 1, 0) + b"k"
         lb = fmt.LEN.pack(len(payload))
         self.append(lb + struct.pack("<I", zlib.crc32(payload, zlib.crc32(lb))) + payload)

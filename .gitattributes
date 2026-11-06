@@ -1,0 +1,11 @@
+*.py text eol=lf
+*.md text eol=lf
+*.mmd text eol=lf
+kvdb text eol=lf
+torture text eol=lf
+Makefile text eol=lf
+*.pdf binary
+docs/evidence/** -text -whitespace
+PROMPTS.md -text !eol -whitespace
+docs/review_report.md -text !eol
+docs/shared_batch_fix.md -text !eol

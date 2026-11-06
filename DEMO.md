@@ -1,120 +1,66 @@
-# Demo
+# Demo with current captured results
 
-This is the rehearsable demo with actual captured results. Run commands from the repository root in Ubuntu/WSL using the real engine. Source is on D:; databases and crash evidence are on Linux ext4 under ~/tmp_test.
+Captured 2026-11-07 01:48:08 IST through 2026-11-07 01:48:37 IST on this laptop, Python 3.12.3, Linux ext4. Capture base commit: d9d3c2811c01d3da66cd6723cfb8d545ecd676be, plus the qualified working tree. The exact current core source matches the successful two-seed qualification after documented CRLF/LF normalization. Raw source hashes remain preserved; portable verification uses the additional canonical hashes. [Current qualification](docs/GAP_FIX_REPORT.md). Recorded PIDs and paths are historical; use new ones when repeating.
 
-Recorded on **2026-11-06 22:22:15–22:22:56 IST** (Asia/Kolkata), Python 3.12.3. Capture commit: 5c2ed535fafaed659d3c82a15fc372a3af273091. Implementation hashes matched the qualified sources in [FINAL_GATE_RERUN_REPORT.md](FINAL_GATE_RERUN_REPORT.md). Process IDs, temporary paths, recovery timings and torn-write prefix lengths vary between runs.
+## Fixed 15-minute schedule
 
-Small raw outputs and checksums: [docs/evidence/demo-2026-11-06](docs/evidence/demo-2026-11-06). Complete local evidence: /home/arsht/tmp_test/demo-evidence-f8om2wag. These are process-kill demonstrations; physical power-loss behaviour is outside this evidence.
-
-## 15-minute run of show
-
-| Time | What to demonstrate |
+| Minutes | Judge action |
 |---|---|
-| 0-2 min | Build and explain the success-after-fsync promise |
-| 2-5 min | Run the short torture rehearsal and point out PASS, errors and the awaiting-response metric |
-| 5-10 min | Acknowledged puts/batch/delete, SIGKILL, reopen and compare data |
-| 10-13 min | Deliberate torn batch, tail repair, and crash-here questions |
-| 13-15 min | Guarantees, limitations and proposed TTL design |
+| 0-1 | Build a clean local clone with make build, Wi-Fi off |
+| 1-4 | 200 default rounds, judge-selected seed |
+| 4-6 | Compaction and recovery-crash, judge-selected seeds/counts |
+| 6-8 | Human batches and 5-10 manual kills, then check/dump |
+| 8-12 | Three source-line crash questions |
+| 12-15 | TTL design only, including a subtle clock/batch problem |
 
-Run longer workloads before the presentation; use their saved evidence when timing is tight.
+The automated capture below contains 25 rehearsal rounds and two controlled demonstrations. It does not claim to complete the judge's 200-round timed run or 5-10 human kills. Follow [the offline plan](OFFLINE_TEST_PLAN.md) for that rehearsal, without AI or internet during official judging.
 
-## Build
+## Build and short rehearsal
 
-~~~bash
-cd "/mnt/d/ALT F4/AltF4"
+From the repository root in Ubuntu/WSL:
+
+```bash
 unset KVDB_CRASH
 make build
-~~~
+./torture --iterations 25 --seed 12345 --mode default \
+  --compress-log --host-storage-dir /mnt/d --min-free-gib 20
+```
 
-For a fresh clone on Linux storage, use the real repository URL and a new directory:
+Actual build output:
 
-~~~bash
-mkdir -p "$HOME/tmp_test"
-CLEAN_CLONE_PARENT=$(mktemp -d "$HOME/tmp_test/kvdb-clean-XXXXXX")
-git clone https://github.com/nikhilbajantri/AltF4.git "$CLEAN_CLONE_PARENT/AltF4"
-cd "$CLEAN_CLONE_PARENT/AltF4"
-make build
-~~~
-
-The captured output below came from the working checkout identified above. A new clean-clone/offline rehearsal is a separate release check; these instructions do not claim it was performed in this capture.
-
-Captured output:
-
-~~~text
+```text
 python3 --version
 Python 3.12.3
 python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else \"Python 3.10+ required\")"
 python3 -m compileall -q src torturelib
 chmod +x kvdb torture
 BUILD OK
-~~~
+```
 
-## Torture commands
+Actual 25-round summary:
 
-Create a fresh Linux directory. The /mnt/d check matches the Windows volume holding this machine's WSL disk; adapt it if that disk moves.
+```text
+SUMMARY PASS=25/25 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.007 kills_awaiting_response=88.0% ACKs={'w1': 129, 'w2': 116} mix={'batch': 107, 'ERR': 8, 'shared': 22, 'max_batch': 10000, 'put': 135, 'del': 42} worlds={0: 25}
+```
 
-~~~bash
+## Manual two-terminal procedure
+
+In terminal one, make a fresh Linux directory and print its path, then start a child that prints its real server PID:
+
+```bash
 mkdir -p "$HOME/tmp_test"
-DEMO_DIR=$(mktemp -d "$HOME/tmp_test/kvdb-demo-XXXXXX")
-printf 'DEMO_DIR=%s\n' "$DEMO_DIR"
-python3 -B ./torture --iterations 25 --seed 12345 --mode default \
-  --compress-log --host-storage-dir /mnt/d --min-free-gib 20 \
-  --data-dir "$DEMO_DIR/torture"
-~~~
-
-Captured final summary (full output: [torture.txt](docs/evidence/demo-2026-11-06/torture.txt)):
-
-~~~text
-SUMMARY PASS=25/25 TOOL_ERROR=0 FAIL=0 max_exit_wait_s=0.003 kills_awaiting_response=96.0% ACKs={'w1': 137, 'w2': 129} mix={'batch': 112, 'ERR': 7, 'shared': 22, 'max_batch': 10000, 'put': 146, 'del': 49} worlds={0: 25}
-~~~
-
-The saved compressed transcript independently contains **25 distinct passing rounds**, zero error records, and **30 SIGKILL events**. Some rounds deliberately tear a write in addition to the random kill. Awaiting a reply does not prove a disk write was executing at that instant. This short rehearsal supplements the earlier 7,000-round qualification.
-
-### Longer pre-demo rehearsal
-
-Seed 12345 is the recorded seed for this document. If the team changes it, record the selected number and the new outputs. These extended commands preserve main's 200-round rehearsal plan; this document's fresh capture was the 25-round default run above. Existing complete per-mode qualification is in FINAL_GATE_RERUN_REPORT.md.
-
-~~~bash
-for MODE in default compaction recovery-crash; do
-  python3 -B ./torture --iterations 200 --seed 12345 --mode "$MODE" \
-    --compress-log --host-storage-dir /mnt/d --min-free-gib 20 \
-    --data-dir "$DEMO_DIR/extended-$MODE"
-done
-~~~
-
-Explain the concurrent workload's awaiting-response percentage once; it is not proof of a write executing at kill time. Compaction and recovery-crash use targeted hooks, rather than the same random-delay workload.
-
-## Manual kill session
-
-Keep two Ubuntu terminals open in the repository root. The capture helper exercised this sequence with a real subprocess and checked each reply before advancing.
-
-### Terminal 1: save data
-
-Use the fresh DEMO_DIR above. This launcher prints the exact server PID before starting the real server. The terminal's main shell remains open after the kill.
-
-~~~bash
+DEMO_DIR=$(mktemp -d "$HOME/tmp_test/kvdb-manual-XXXXXX")
+printf '%s\n' "$DEMO_DIR"
 bash -c 'echo "SERVER_PID=$$"; exec python3 -B -m src.serve "$1"' _ "$DEMO_DIR/demo.db"
-~~~
+```
 
-After READY, type these requests. Wait for each reply; a batch receives one ACK after end.
+Send the put/get/batch/delete commands shown in the captured transcript below. In terminal two, set DEMO_DIR to the newly printed path and SERVER_PID to the newly printed numeric PID, then run `kill -KILL "$SERVER_PID"`. Use only the server started for this rehearsal; do not copy a recorded PID. Run open/check/dump/get, compare the acknowledged data, restart and repeat 5-10 times with fresh changes. A missing ACK allows a whole operation to appear or disappear, never a partial batch.
 
-~~~text
-put w1-1 color blue
-get w1-2 color
-batch w1-3
-put city Delhi
-put status ready
-end
-put w1-4 obsolete temporary
-del w1-5 obsolete
-get w1-6 obsolete
-~~~
+Actual controlled transcript (IN/OUT/ACTION are labels from the capture tool):
 
-Keep the server running after the final response. Actual recorded transcript: IN is input, OUT is stdout, and ACTION is the separately issued kill.
-
-~~~text
-OUT SERVER_PID=668
-OUT READY keys=0 recovery_ms=2.969
+```text
+OUT SERVER_PID=107389
+OUT READY keys=0 recovery_ms=15.051
 IN  put w1-1 color blue
 OUT ACK w1-1
 IN  get w1-2 color
@@ -130,30 +76,15 @@ IN  del w1-5 obsolete
 OUT ACK w1-5
 IN  get w1-6 obsolete
 OUT NOTFOUND w1-6
-ACTION kill -KILL 668
+ACTION kill -KILL 107389
 OBSERVED subprocess returncode=-9 (SIGKILL)
-~~~
+```
 
-### Terminal 2: kill and reopen
+Actual reopen verification:
 
-Copy the current directory and PID from Terminal 1 when prompted. **Recorded PID 668 is historical; use your new server's PID.**
-
-~~~bash
-cd "/mnt/d/ALT F4/AltF4"
-read -r -p 'Paste DEMO_DIR from Terminal 1: ' DEMO_DIR
-read -r -p 'Paste SERVER_PID from Terminal 1: ' SERVER_PID
-test "$SERVER_PID" -gt 1 && kill -KILL "$SERVER_PID"
-python3 -B ./kvdb open "$DEMO_DIR/demo.db"
-python3 -B ./kvdb check "$DEMO_DIR/demo.db"
-python3 -B ./kvdb dump "$DEMO_DIR/demo.db"
-python3 -B ./kvdb get "$DEMO_DIR/demo.db" obsolete
-~~~
-
-The capture confirmed exit -9 (SIGKILL) without sending quit. Actual reopen results:
-
-~~~text
+```text
 $ python3 -B ./kvdb open "$DEMO_DIR/demo.db"
-keys=3 recovery_ms=0.113
+keys=3 recovery_ms=0.105
 $ python3 -B ./kvdb check "$DEMO_DIR/demo.db"
 OK
 $ python3 -B ./kvdb dump "$DEMO_DIR/demo.db"
@@ -162,46 +93,23 @@ color	blue
 status	ready
 $ python3 -B ./kvdb get "$DEMO_DIR/demo.db" obsolete
 NOTFOUND
-~~~
+```
 
-Every acknowledged put and the two-key batch survived. The acknowledged deletion survived too: obsolete is absent. After recovery, check returns exactly OK.
+## Deliberately torn batch
 
-## Deliberately interrupt a batch
+The second controlled demonstration starts serve with KVDB_CRASH=torn_write:1 and sends a batch changing city and status together. The real child exits -9, without ACK for that batch. The recovered map must retain the earlier complete city/status values, with neither new value visible.
 
-Continue in Terminal 2 after the previous server has been killed. This named hook starts a new server and kills it after writing only a prefix of the requested batch. Its changes try to replace city and status together.
+Actual check before repair:
 
-~~~bash
-printf 'batch w2-1\nput city Mumbai\nput status broken\nend\n' | \
-  KVDB_CRASH=torn_write:1 python3 -B -m src.serve "$DEMO_DIR/demo.db"
-python3 -B ./kvdb check "$DEMO_DIR/demo.db"
-~~~
+```text
+OK torn-tail=9 bytes (open will truncate)
+```
 
-Captured server output before the kill (there was no ACK w2-1; child exit was -9):
+Actual repair and verification:
 
-~~~text
-READY keys=3 recovery_ms=0.104
-~~~
-
-The read-only check before recovery reported:
-
-~~~text
-OK torn-tail=5 bytes (open will truncate)
-~~~
-
-Now recover and inspect:
-
-~~~bash
-python3 -B ./kvdb open "$DEMO_DIR/demo.db"
-python3 -B ./kvdb check "$DEMO_DIR/demo.db"
-python3 -B ./kvdb dump "$DEMO_DIR/demo.db"
-python3 -B ./kvdb get "$DEMO_DIR/demo.db" obsolete
-~~~
-
-Actual results:
-
-~~~text
+```text
 $ python3 -B ./kvdb open "$DEMO_DIR/demo.db"
-keys=3 recovery_ms=1.563
+keys=3 recovery_ms=13.356
 $ python3 -B ./kvdb check "$DEMO_DIR/demo.db"
 OK
 $ python3 -B ./kvdb dump "$DEMO_DIR/demo.db"
@@ -210,38 +118,34 @@ color	blue
 status	ready
 $ python3 -B ./kvdb get "$DEMO_DIR/demo.db" obsolete
 NOTFOUND
-~~~
-
-Recovery removed the incomplete tail. Earlier city=Delhi and status=ready remain together; neither change from the interrupted batch is visible. The earlier deletion stays absent.
+```
 
 ## Crash-here answers
 
-| Judge's question | Answer to explain |
+| Location | Disk and next open |
 |---|---|
-| Before a write starts? | Earlier saved state survives; the new operation is absent. |
-| Halfway through a batch? | Recovery accepts complete CRC-checked frames. An incomplete batch frame is discarded as a whole. |
-| After writing, before fsync? | A complete frame can survive a process kill through the OS cache. There is no ACK yet; this does not establish power-cut durability. |
-| After fsync, before the engine returns or sends ACK? | The complete change survives even if the caller missed its reply. |
-| During recovery's scan? | The scan reads the file; reopening can scan it again. |
-| During tail truncation? | The next open rescans and repeats any repair to the valid stopping point, synchronizing the truncated file. |
-| During compaction, before or after replacement? | Before replacement the original file remains authoritative; after replacement the complete compacted file is authoritative in the tested process-crash scenarios. |
-| After compaction rename, before directory fsync? | The process-crash tests reopen the new compacted file. Directory synchronization is a separate requirement for power-loss durability. |
-| During initialization or close? | Incomplete initialization is restarted and stale temporary files are removed; previously saved data survives an interrupted close. See the exact hook expectations in BREAKING.md. |
-| When the size cap is reached? | A rejected batch changes nothing. Deletes use reserved space; compaction can reclaim dead data for later writes. |
-| Saving and rollback both fail? | UNCERTAIN is reported, later mutations on that handle are blocked, and the caller reconciles state after reopening before retrying. |
+| Before append | Earlier frames plus guard; new operation absent |
+| During frame write | Incomplete frame replaces old guard; drop entire tail, restore guard |
+| Full frame before fsync | Full CRC-valid frame can survive; no ACK yet; not a power-cut claim |
+| After fsync before return/ACK | Complete frame and guard durable; replay operation even without reply |
+| Missing final guard byte | Full frames still valid; restore guard when cap permits; current writes reserve it |
+| During recovery scan/repair | Rebuild RAM index again and repeat any incomplete repair |
+| Compaction before replacement | Old authoritative file survives; remove leftover temp |
+| After replacement | Complete new file is authoritative; directory is synced before descriptor/index swap |
+| Cap reached | Reject before append; optional compaction can change file bytes without applying the rejected operation |
+| Saving and rollback both fail | UNCERTAIN, no success promise; handle poisoned; reopen and reconcile |
+| B2 without a trailing commit marker | This design commits a complete CRC-prefixed frame; no separate absent-marker state exists. Explain the equivalent incomplete-frame case |
 
-Full hook table: [BREAKING.md](BREAKING.md). Qualification and limits: [FINAL_GATE_RERUN_REPORT.md](FINAL_GATE_RERUN_REPORT.md).
+Use [the exact 32-row proof](ARCHITECTURE.md) and [14 exact functions](BREAKING.md). Every member should explain disk bytes and the next recovery action, not merely say the tests passed.
 
-## TTL answer
+## TTL design extension (not implemented)
 
-TTL means a value expires after a specified duration. **Automatic expiry is not implemented in the current database API or format.** Values remain until deleted or overwritten.
+Persist an absolute expiry time with each latest value, using a versioned/compatible format change (for example a 64-bit epoch timestamp, with zero meaning no expiry). Recovery must replay expiry metadata without restarting timers. Reads hide expired latest values; compaction excludes them. An expired overwrite must still suppress an older value: simply skipping that record during replay can resurrect the old value. Define a clock-backward policy and evaluate batch expiry consistently under the lock; a controlled-clock oracle must test restart, overwrite, delete, expiry and compaction. This is a design answer, not an existing feature.
 
-If asked how to add it: persist an absolute expiry timestamp with each value so a restart does not restart its lifetime; define reads of expired values as missing; apply expiry consistently during recovery and compaction. We would need explicit clock/backward-time rules, a compatible format change, and crash tests around expiry, batches, restart and compaction. A proposed encoding can store absolute epoch milliseconds with 0 meaning never expires. Reads and dumps would hide expired keys, compaction would skip them, and recovery would replay saved expiry metadata without restarting timers. The torture oracle would need a controllable clock. This is a proposed extension, not an existing demonstrated feature.
+## Repeat capture
 
-## Repeat the capture automatically
+```bash
+python3 -B tools/record_demo_results.py --qualification-manifest docs/gap_fixes_gate_manifest.json
+```
 
-~~~bash
-python3 -B tools/record_demo_results.py
-~~~
-
-The helper creates a fresh directory and kills only the servers it starts. It checks source identity, expected replies, SIGKILL exits and complete recovered data. It prints DEMO_EVIDENCE only after every assertion passes. A partial or failed capture is not a successful demo: inspect its errors and retained evidence. Refresh this document's recorded examples after a new successful capture rather than inventing timings or replies.
+The helper checks source identity against successful qualification, starts/kills only its own servers, validates responses and compares full recovered data. It reports success only after all assertions pass. New timings/PIDs can differ. Small raw outputs and checksums are in [docs/evidence/gap-demo-2026-11-07](docs/evidence/gap-demo-2026-11-07); full local capture: /home/arsht/tmp_test/demo-evidence-6ee339u0.

@@ -42,6 +42,15 @@ def batch_command(op_id, first):
     return "\n".join(lines) + "\nend\n"
 
 
+def strict_recovery_ok(output):
+    """A benchmark PASS must enforce the PDF's strict recovery threshold."""
+    try:
+        elapsed = float(output.split("recovery_ms=", 1)[1].split()[0])
+    except (IndexError, ValueError):
+        return False
+    return 0 <= elapsed < 2000
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--seed", type=int, required=True)
@@ -117,12 +126,14 @@ def main(argv=None):
                 wrong.append(key)
         missing = sum("key%07d" % k not in found for k in acked)
 
-        ok = (proc.returncode == -signal.SIGKILL and opened.returncode == 0 and
+        timing_ok = strict_recovery_ok(opened.stdout)
+        ok = (timing_ok and proc.returncode == -signal.SIGKILL and opened.returncode == 0 and
               check.stdout.strip() == "OK" and dump.returncode == 0 and not missing and not wrong)
         print("seed=%d extra_batches=%d kill_delay_ms=%.1f serve_exit=%s write_s=%.1f"
               % (args.seed, extra_batches, delay * 1000, proc.returncode, write_s))
         print("in_flight=w1-%d (%s)" % (in_flight, "ACKed before kill" if not unacked else "not ACKed"))
         print("open: %s (wall %.1f ms, includes interpreter start)" % (opened.stdout.strip(), open_ms))
+        print("strict_recovery_under_2000_ms=%s" % timing_ok)
         print("check: %s" % check.stdout.strip())
         print("keys found=%d keys ACKed=%d missing ACKed=%d unexpected=%d"
               % (len(found), len(acked), missing, len(wrong)))

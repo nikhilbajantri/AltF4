@@ -1,0 +1,2 @@
+puts:    keys=1000000 file_bytes=37001616 write_s=1.85 recovery_ms=638.4
+compact: delete_s=1.51 size_before=54003216 size_after=16 compact_ms=9.6

@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "passed": 500,
+  "iterations": 500,
+  "seed": 2026110703,
+  "one_database": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/same_database_f1/persistent.db",
+  "seconds": 281.84
+}

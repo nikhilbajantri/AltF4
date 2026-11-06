@@ -26,6 +26,9 @@ MAX_KEY = 1024
 MAX_VALUE = 1048576
 MAX_OPS = 10000
 
+# Expendable file trailer, outside all frames; overwritten by the next append.
+TAIL_GUARD = b"\x00"
+
 HEADER = struct.Struct("<8sII")
 FRAME_HDR = struct.Struct("<QI")
 LEN = struct.Struct("<Q")
@@ -108,7 +111,7 @@ def decode_frame(buf, pos, size):
     copied; read them later as buf[off:off + vlen]. buf may be bytes, mmap or
     memoryview; size is the number of valid bytes in buf.
     """
-    # F4 truncated tail / A2 torn write: the frame header itself is incomplete.
+    # A2 torn write: the frame header itself is incomplete.
     if size - pos < FRAME_HDR_SIZE:
         return None
     length, crc = FRAME_HDR.unpack_from(buf, pos)

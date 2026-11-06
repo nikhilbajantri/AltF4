@@ -1,0 +1,361 @@
+{
+  "base_commit": "d9d3c2811c01d3da66cd6723cfb8d545ecd676be",
+  "qualified_directory": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l",
+  "original_sources_match_after_line_ending_normalization": true,
+  "line_ending_only_paths": [
+    "Makefile",
+    "src/__init__.py",
+    "src/crash.py",
+    "src/engine.py",
+    "src/format.py",
+    "src/scan.py",
+    "tests/__init__.py",
+    "tests/bench_compact.py",
+    "tests/bench_f3_kill.py",
+    "tests/bench_recovery.py",
+    "tests/test_cli.py",
+    "tests/test_compact.py",
+    "tests/test_crash_campaign.py",
+    "tests/test_crashpoints.py",
+    "tests/test_engine.py",
+    "tests/test_format.py",
+    "tests/test_gate_storage.py",
+    "tests/test_scan.py",
+    "tests/test_tail_guard.py",
+    "tests/test_torture.py",
+    "tests/util.py",
+    "tools/check_ps_half_batch.py",
+    "tools/ps_check_contracts.py",
+    "tools/ps_f1_same_database.py",
+    "tools/ps_measure_recovery.py",
+    "tools/ps_specific_scenarios.py",
+    "tools/report_ps_acceptance.py",
+    "tools/run_final_gate.py",
+    "tools/run_ps_acceptance.py",
+    "torturelib/__init__.py",
+    "torturelib/modes.py",
+    "torturelib/oracle.py",
+    "torturelib/protocol.py",
+    "torturelib/runner.py",
+    "torturelib/workload.py"
+  ],
+  "capture_tool_sha256": "146eb8ebe0b23ffd450c7f13f955a88d7be29a88373bd03a033aaf2fd125803f",
+  "unit_tests": 153,
+  "unit_seconds": 22.968,
+  "crash_rounds": 7500,
+  "kill_records": 11941,
+  "transcripts": [
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/compaction-2026110701/seed-2026110701-b7jy2u9p/oracle.log.gz",
+      "sha256": "0d6d6bf9adde67204bf39e08b701f07c08a414fcffd17c778d9378e6904a0ea8",
+      "bytes": 1053977,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "SUBMIT": 1000,
+        "RESULT": 1000,
+        "PASS": 500
+      },
+      "points": {
+        "compact_mid_copy": 125,
+        "compact_before_rename": 125,
+        "compact_after_rename": 125,
+        "compact_after_swap": 125
+      },
+      "mode": "compaction",
+      "seed": 2026110701
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/crashpoints-2026110701/seed-2026110701-0x5akod2/oracle.log.gz",
+      "sha256": "aa2f96861fc4fd432998f251f3a13a3a92d6278f840734ecaa3de276f61e816a",
+      "bytes": 348334,
+      "pass_rounds": 500,
+      "kill_records": 572,
+      "events": {
+        "SUBMIT": 1061,
+        "RESULT": 1061,
+        "PASS": 500
+      },
+      "points": {
+        "init_before_rename": 35,
+        "close_mid": 36,
+        "torn_write": 108,
+        "after_write": 36,
+        "compact_after_rename": 36,
+        "compact_after_swap": 36,
+        "compact_mid_copy": 35,
+        "after_return": 36,
+        "after_fsync": 35,
+        "compact_before_rename": 35,
+        "before_write": 36,
+        "recovery_mid_scan": 36,
+        "recovery_after_truncate": 36,
+        "recovery_before_truncate": 36
+      },
+      "mode": "crashpoints",
+      "seed": 2026110701
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/default-2026110701/seed-2026110701-t_9ml2vd/oracle.log.gz",
+      "sha256": "cb2a6fd52fef5073107bbcfff719294f00b5ccf0dd9401bdbf4ca09716490e40",
+      "bytes": 105044056,
+      "pass_rounds": 500,
+      "kill_records": 600,
+      "events": {
+        "RESPONSE": 5750,
+        "SENT": 5942,
+        "KILL": 500,
+        "SUBMIT": 100,
+        "RESULT": 100,
+        "PASS": 500
+      },
+      "points": {
+        "torn_write": 100
+      },
+      "mode": "default",
+      "seed": 2026110701
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/disk-full-2026110701/seed-2026110701-19dxsxcb/oracle.log.gz",
+      "sha256": "1c4c0bd68924e708c6ba653bda2621e7b22d4b7b7c3305120d7d35c660083060",
+      "bytes": 79685,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "SUBMIT": 1000,
+        "RESULT": 1000,
+        "PASS": 500
+      },
+      "points": {
+        "close_mid": 500
+      },
+      "mode": "disk-full",
+      "seed": 2026110701
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/large-batch-2026110701/seed-2026110701-xifnnurl/oracle.log.gz",
+      "sha256": "69efe8e16c561ca6b0e81fb8e8e8cc12f8ce74c22e2f3c24fb174972d65a05f7",
+      "bytes": 582753684,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "RESPONSE": 1758,
+        "SENT": 1777,
+        "KILL": 500,
+        "PASS": 500
+      },
+      "points": {},
+      "mode": "large-batch",
+      "seed": 2026110701
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/large-values-2026110701/seed-2026110701-2uz7a17p/oracle.log.gz",
+      "sha256": "e2e64866f438b4c135e2af2f2d11097d4e0bbbf0fdb8dd6405e2075583dc5ed3",
+      "bytes": 12702944,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "RESPONSE": 5632,
+        "SENT": 5681,
+        "KILL": 500,
+        "PASS": 500
+      },
+      "points": {},
+      "mode": "large-values",
+      "seed": 2026110701
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/recovery-crash-2026110701/seed-2026110701-3jywj06s/oracle.log.gz",
+      "sha256": "be0a5b73f20574f179fb7fd60606a85b458f1591eb2ea0681151729f1d6b718d",
+      "bytes": 74840,
+      "pass_rounds": 500,
+      "kill_records": 2499,
+      "events": {
+        "SUBMIT": 2999,
+        "RESULT": 2999,
+        "PASS": 500
+      },
+      "points": {
+        "recovery_mid_scan": 501,
+        "torn_write": 999,
+        "recovery_before_truncate": 501,
+        "recovery_after_truncate": 498
+      },
+      "mode": "recovery-crash",
+      "seed": 2026110701
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/compaction-2026110702/seed-2026110702-pzupy545/oracle.log.gz",
+      "sha256": "014131de6fb2c4300e9c14aa22e9a8c36885850b53d41c31886176df9a10e745",
+      "bytes": 1053410,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "SUBMIT": 1000,
+        "RESULT": 1000,
+        "PASS": 500
+      },
+      "points": {
+        "compact_mid_copy": 125,
+        "compact_before_rename": 125,
+        "compact_after_rename": 125,
+        "compact_after_swap": 125
+      },
+      "mode": "compaction",
+      "seed": 2026110702
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/crashpoints-2026110702/seed-2026110702-mo7koddz/oracle.log.gz",
+      "sha256": "64485d38e2bcbb94fc4b65e3b913fc0dbbfe7d0cb05fe4e0c28c420527975de2",
+      "bytes": 408431,
+      "pass_rounds": 500,
+      "kill_records": 571,
+      "events": {
+        "SUBMIT": 1064,
+        "RESULT": 1064,
+        "PASS": 500
+      },
+      "points": {
+        "close_mid": 36,
+        "compact_mid_copy": 36,
+        "after_write": 36,
+        "torn_write": 107,
+        "compact_after_swap": 35,
+        "before_write": 36,
+        "after_return": 35,
+        "init_before_rename": 36,
+        "recovery_before_truncate": 36,
+        "compact_before_rename": 36,
+        "recovery_mid_scan": 36,
+        "compact_after_rename": 35,
+        "recovery_after_truncate": 35,
+        "after_fsync": 36
+      },
+      "mode": "crashpoints",
+      "seed": 2026110702
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/default-2026110702/seed-2026110702-wkl5aekk/oracle.log.gz",
+      "sha256": "de11c16acf7249e575a68fa7afba821c528d44f1ba0d3c6d0a45499c65aa59dd",
+      "bytes": 121998098,
+      "pass_rounds": 500,
+      "kill_records": 600,
+      "events": {
+        "RESPONSE": 6871,
+        "SENT": 7075,
+        "KILL": 500,
+        "SUBMIT": 100,
+        "RESULT": 100,
+        "PASS": 500
+      },
+      "points": {
+        "torn_write": 100
+      },
+      "mode": "default",
+      "seed": 2026110702
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/disk-full-2026110702/seed-2026110702-5lknj6mh/oracle.log.gz",
+      "sha256": "cf7d3323a6ab0bffb26c815645033e1ddafa22881ede0cd30b091188beff4892",
+      "bytes": 79435,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "SUBMIT": 1000,
+        "RESULT": 1000,
+        "PASS": 500
+      },
+      "points": {
+        "close_mid": 500
+      },
+      "mode": "disk-full",
+      "seed": 2026110702
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/large-batch-2026110702/seed-2026110702-nujdz0hq/oracle.log.gz",
+      "sha256": "78ada9eb30bbbcebf14fb8944675be4d469073623bcb66c00f0613fc0ae9266b",
+      "bytes": 604557121,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "RESPONSE": 1900,
+        "SENT": 1931,
+        "KILL": 500,
+        "PASS": 500
+      },
+      "points": {},
+      "mode": "large-batch",
+      "seed": 2026110702
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/large-values-2026110702/seed-2026110702-jejbbyfe/oracle.log.gz",
+      "sha256": "d0e6a5002a769ccfbd3f3e0a380ac2e07c548066a40e11ba438c5cf53b8c525a",
+      "bytes": 13132728,
+      "pass_rounds": 500,
+      "kill_records": 500,
+      "events": {
+        "RESPONSE": 6085,
+        "SENT": 6070,
+        "KILL": 500,
+        "PASS": 500
+      },
+      "points": {},
+      "mode": "large-values",
+      "seed": 2026110702
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/modes/gate-d2f5vd3g/recovery-crash-2026110702/seed-2026110702-9my3p5gm/oracle.log.gz",
+      "sha256": "832ba8dd90f9a0264a9c553fff94fa9dd1f1566d694dbbc18fca19b5521e1f51",
+      "bytes": 74783,
+      "pass_rounds": 500,
+      "kill_records": 2499,
+      "events": {
+        "SUBMIT": 2999,
+        "RESULT": 2999,
+        "PASS": 500
+      },
+      "points": {
+        "recovery_mid_scan": 501,
+        "torn_write": 999,
+        "recovery_before_truncate": 501,
+        "recovery_after_truncate": 498
+      },
+      "mode": "recovery-crash",
+      "seed": 2026110702
+    },
+    {
+      "path": "/home/arsht/tmp_test/gap-fix-qualification-30x9lkfq/results/ps-acceptance-2ehcsq9l/same_database_f1/oracle.log.gz",
+      "sha256": "4a7a18b1de1d2c9cb4e6c53f653abd7479b3e51070eac1be1bc4e948216e4b3b",
+      "bytes": 111305211,
+      "pass_rounds": 500,
+      "kill_records": 600,
+      "events": {
+        "RESPONSE": 5265,
+        "SENT": 5483,
+        "KILL": 500,
+        "SUBMIT": 100,
+        "RESULT": 100,
+        "PASS": 500
+      },
+      "points": {
+        "torn_write": 100
+      },
+      "mode": "F1 one persistent database",
+      "seed": 2026110703
+    }
+  ],
+  "document_sha256": {
+    "README.md": "c7e4454d6bb11379a73d21510382a714e466161bd1d21ac68f4ee89d4c3a8ddf",
+    "ARCHITECTURE.md": "0c91fd0ba7ee3d8cc94002c95b3a95e1d20887d14034599d774ffdf56941593f",
+    "BREAKING.md": "2f0a667327d14db6cdbe2426f92a8177947c3b3b6c2d5d9965d02b270ae10024",
+    "DEMO.md": "a0224cb3a7368c57f8e705a49356a6b3dd6189f02864634e928fd99647343326",
+    "OFFLINE_TEST_PLAN.md": "ef6a0a512e186b70934255605f2f27e31331743b15aba0cd6fc05b8b949ac40c",
+    "diagrams/architecture.mmd": "e962017e90aca677b705c37488dae87468fe82615ac67b0ea14930b26167470d",
+    "output/pdf/BREAKING.pdf": "57296511d728aefda7acb294034cf7ad8932788dedbda3210dbd81b13388afda"
+  },
+  "breaking_pages": 2,
+  "architecture_unique_rows": 32,
+  "prompt_log_pending_by_user_choice": true,
+  "physical_offline_rehearsal": "not performed",
+  "report_tool_sha256": "5c8352be7b9ce60593a21d968f91972e76740113e5d21b2d0d2292256d89cb3d"
+}

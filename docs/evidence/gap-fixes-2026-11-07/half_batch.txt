@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "batch_ops": 10000,
+  "complete_operation_prefix": 5000,
+  "exact_prefix_bytes": 100016,
+  "full_frame_bytes": 200016,
+  "torn_file_bytes": 100066,
+  "child_exit": -9,
+  "child_stdout": "READY keys=1 recovery_ms=0.069\n",
+  "engine_recovery_ms": 3.45000200013601,
+  "api_wall_ms": 3.458868999587139,
+  "partial_batch_visible": false,
+  "source_sha256": "9e3a566aa70cda4e80032734a3a827409a423822db2686c4cbadc2bea743bffb",
+  "instrumentation": "test-only prefix selector; real engine write and actual SIGKILL"
+}

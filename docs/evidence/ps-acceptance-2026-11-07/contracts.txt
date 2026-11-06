@@ -1,0 +1,36 @@
+{
+  "directory": "/home/arsht/tmp_test/ps-acceptance-7w_ohe0e/contracts",
+  "F4_before_open": "OK torn-tail=24 bytes (open will truncate)\n",
+  "F4_open": "keys=2 recovery_ms=13.126\n",
+  "F4_after_dump": "a\ta\nb\tb\n",
+  "F4_acknowledged_last_key_lost": true,
+  "network_guard_verified": true,
+  "clean_clone_build": {
+    "exit": 0,
+    "stdout": "python3 --version\nPython 3.12.3\npython3 -c \"import sys; sys.exit(0 if sys.version_info >= (3, 10) else \\\"Python 3.10+ required\\\")\"\npython3 -m compileall -q src torturelib\nchmod +x kvdb torture\nBUILD OK\n",
+    "stderr": ""
+  },
+  "offline_guarded_put": "OK\n",
+  "offline_guarded_get": "works\n",
+  "offline_scope": "Python process-level socket guard; Wi-Fi adapter was not switched off; local Git clone, not a network clone",
+  "architecture_ids": {
+    "rows": 41,
+    "unique": 32,
+    "duplicates": [
+      "B1",
+      "B2",
+      "B5",
+      "C1",
+      "C4",
+      "C5",
+      "E1",
+      "E2",
+      "E5"
+    ],
+    "not_verified_rows": 41
+  },
+  "non_stdlib_runtime_imports": [],
+  "torture_default_iterations": "25",
+  "prompt_log_has_entries": false
+}
+CLI checks: 19
