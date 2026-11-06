@@ -56,3 +56,7 @@ Caller-owned values and decoded serve/CLI operations still occupy RAM. Bytearray
 There is no aggregate byte quota, global queue-memory budget or disk-backed input spool. Adding one would require a documented input-policy decision or further architectural work. Python allocator failure and an operating-system OOM kill are different: controlled MemoryError handling does not guarantee survival if the OS kills the process. The public format-only `encode_frame` helper still materializes its output; the engine uses `prepare_frame` for large writes.
 
 The historical 7,000-round campaign has not been repeated on this implementation. Its result belongs to its recorded sources. The scanner false-corruption edge case and final demo checks remain separate work; freeze the implementation before the next complete qualification run.
+
+## Qualification follow-up
+
+The complete rerun passed all 7,000 rounds on commit 1be1267 after these fixes. All 143 automated tests passed before that gate. See [the rerun report](../FINAL_GATE_RERUN_REPORT.md) and [audited evidence](final_gate_rerun_manifest.json). Prior paragraphs describing a pending rerun record the state before qualification.

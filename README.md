@@ -118,7 +118,7 @@ Seeds reproduce planned operations and kill delays, not OS scheduling or the num
 
 See [docs/review_fixes.md](docs/review_fixes.md) for the current issue-resolution checks. [CRASH_TEST_REPORT.md](CRASH_TEST_REPORT.md) records the earlier campaign against its stated source hashes; it is historical, not a claim about later commits. The targeted suite runs with `python3 -B -m unittest tests.test_crash_campaign -v`.
 
-These are process-crash and injected-I/O checks. The two-seed, 500-round-per-mode gate passed (7,000 rounds); see FINAL_TEST_REPORT.md. Physical power-loss testing and arbitrary media corruption remain separate work. Keep benchmark/test databases on Linux ext4; the currently open Windows source checkout is not itself an ext4 checkout.
+These are process-crash and injected-I/O checks. The two-seed, 500-round-per-mode gate passed (7,000 rounds); see FINAL_GATE_RERUN_REPORT.md. Physical power-loss testing and arbitrary media corruption remain separate work. Keep benchmark/test databases on Linux ext4; the currently open Windows source checkout is not itself an ext4 checkout.
 
 ## Final qualification
 
@@ -129,3 +129,7 @@ See [FINAL_TEST_REPORT.md](FINAL_TEST_REPORT.md) for the complete test history, 
 The engine checks the encoded size against the database cap before encoding. Frames above 4 MiB retain immutable input parts, calculate the original CRC incrementally, and write chunks of at most 4 MiB, followed by one final fsync. The on-disk format and atomic batch semantics are unchanged. API iterators and CLI batch files stop collecting after the 10,001st operation instead of exhausting an unbounded input. The limit remains 10,000 operations, 1 MiB per value.
 
 Measured additional encoding memory for a 40 MiB batch fell from about 80.1 MiB to 8.1 MiB; rejected batches avoid that allocation. Caller-owned input values are excluded from these measurements. Serve still retains decoded batch input and queued requests, and mutable API inputs need snapshots; this is not a total RAM quota. See [docs/batch_memory_review.md](docs/batch_memory_review.md) for measurements, tests and remaining limits.
+
+## Qualification after final fixes
+
+All 143 automated tests and the fresh two-seed 7,000-round campaign passed on commit 1be1267. There were zero failed rounds and zero tool errors. Independent transcript auditing verified 11,342 SIGKILL exits and 4,892 submitted shared batches, with all 14 named crash points covered per seed. See [FINAL_GATE_RERUN_REPORT.md](FINAL_GATE_RERUN_REPORT.md) and [the audited manifest](docs/final_gate_rerun_manifest.json). Earlier reports retain their original version-specific results.

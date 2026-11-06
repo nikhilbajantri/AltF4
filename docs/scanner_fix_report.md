@@ -19,3 +19,7 @@ Every scanner fixture checks file hashes and directory contents before/after bot
 Build passed; all **143 tests passed in 41.548 seconds**. Full-suite results are recorded in docs/evidence/final_fixes_full_suite.txt. The complete two-seed, seven-mode, 500-round-per-mode rerun will use a separate committed source version and fresh seeds, 2026110606 and 2026110607. A passing result must be backed by all 7,000 distinct PASS records and unchanged source hashes; incomplete runs and tool errors do not count.
 
 Related completed fixes are documented in batch_memory_review.md and uncertain_write_report.md. Remaining documented limits include input/queue RAM use, mutation-oracle search budgets, physical power-loss coverage and demo-machine validation.
+
+## Qualification follow-up
+
+The complete rerun passed all 7,000 rounds on commit 1be1267 after these fixes. All 143 automated tests passed before that gate. See [the rerun report](../FINAL_GATE_RERUN_REPORT.md) and [audited evidence](final_gate_rerun_manifest.json). Prior paragraphs describing a pending rerun record the state before qualification.

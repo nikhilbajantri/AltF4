@@ -53,3 +53,7 @@ python3 -B -m unittest -q
 ```
 
 The earlier 7,000-round result remains evidence for its recorded source hashes. It has not been rerun on this change. Remaining technical reviews include aggregate batch memory use and the read-only scanner's possible false corruption report. Complete those reviews before freezing the code for the next final qualification.
+
+## Qualification follow-up
+
+The complete rerun passed all 7,000 rounds on commit 1be1267 after these fixes. All 143 automated tests passed before that gate. See [the rerun report](../FINAL_GATE_RERUN_REPORT.md) and [audited evidence](final_gate_rerun_manifest.json). Prior paragraphs describing a pending rerun record the state before qualification.
