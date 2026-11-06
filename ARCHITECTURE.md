@@ -3,30 +3,47 @@
 ## Part 1 Diagram
 ```mermaid
 flowchart TD
-    caller["Application, CLI, server, or test"] --> api["KVDB methods: put, get, delete, batch"]
-    api --> lock["Engine lock"]
-    lock --> validate["Validate and encode operations"]
-    validate --> frame["Build CRC-protected frame"]
-    frame --> write["Write frame with os.pwrite"]
-    write --> sync["os.fsync database file"]
-    sync --> index["Update in-memory index"]
-    index --> success["Return success; server may send ACK"]
+    client["Client, CLI, or test"] --> serve["Serve reads request"]
+    serve --> workers["One worker thread per writer"]
+    workers --> api["KVDB put, delete, or batch"]
+    api --> validate["1. Validate and encode"]
+    validate --> lock["2. Take engine lock"]
+    lock --> poison["3. Check poisoned state"]
+    poison --> space["4. Check space and delete reserve"]
+    space -->|Fits| write["5. Write frame with os.pwrite"]
+    write --> sync["6. os.fsync database file"]
+    sync --> index["7. Update in-memory index"]
+    index --> returned["8. Return from engine"]
+    returned --> ack["9. Serve sends ACK"]
 
-    open["Open database"] --> filelock["Acquire path lock"]
-    filelock --> check["Create file if missing; check header"]
-    check --> scan["Scan frames and check CRC"]
-    scan --> replay["Apply valid operations to rebuild index"]
-    replay --> scan
-    scan -->|Incomplete tail| truncate["Truncate tail and fsync"]
+    space -->|Full, no reclaimable space| full["Return DISKFULL; write nothing"]
+    space -->|Full, dead bytes exist| compact_retry["Compact once, then retry space check"]
+    compact_retry --> space
+
+    open["Open database"] --> flock["Acquire flock"]
+    flock --> temps["Remove leftover .compact and .init files"]
+    temps --> header["Create if missing; validate header"]
+    header --> scan["Scan frames and check length and CRC"]
+    scan --> apply["Apply valid operations to rebuild index"]
+    apply --> scan
+    scan -->|Incomplete or CRC-bad tail| truncate["ftruncate to last valid frame; fsync"]
     truncate --> ready["Database ready"]
-    scan -->|Malformed valid-CRC frame| error["Raise corruption error"]
-    replay --> ready
+    apply --> ready
+    scan -->|CRC-valid malformed frame| corrupt["Raise CorruptError; do not truncate"]
 
-    compact["Compact database"] --> live["Copy live keys into .compact file"]
-    live --> tempsync["fsync temporary file"]
-    tempsync --> rename["Replace database with os.replace"]
-    rename --> dirsync["fsync parent directory"]
-    dirsync --> swap["Reopen file and swap engine state"]
+    compact["Compaction"] --> copy["Write live keys to .compact"]
+    copy --> temp_sync["fsync temporary file and close"]
+    temp_sync --> replace["os.replace .compact over database"]
+    replace --> dir_sync["fsync parent directory"]
+    dir_sync --> swap["Reopen file and swap engine state"]
+
+    subgraph format["On-disk file layout"]
+        header_layout["HEADER: 16 bytes = magic 8 + version u32 4 + header CRC u32 4"]
+        frame_layout["FRAME: 12-byte header = length u64 8 + CRC u32 4, followed by payload"]
+        payload_layout["PAYLOAD: operation count u32 4, then operations"]
+        op_layout["OP header: 7 bytes = type u8 1 + key length u16 2 + value length u32 4"]
+        header_layout --> frame_layout --> payload_layout --> op_layout
+    end
 ```
 
 ## Part 2 Proof table
@@ -81,20 +98,19 @@ flowchart TD
 ## Part 3 Durability / Atomicity / Recoverability
 
 ### Durability
-A successful write is not reported immediately. The engine first writes the encoded frame to the database file using `_pwrite_all()`, which calls `os.pwrite()` until all frame bytes have been written. It then calls `os.fsync()` on the database file. Only after `_write()` returns does `_commit()` update the in-memory index and finish the operation. The server can send an ACK after the engine call returns.
+The write path calls `os.pwrite` through `_pwrite_all()` until the frame is written, then calls `os.fsync(fd)`. The engine updates the index and returns only after the sync succeeds. The server sends ACK after the engine call returns.
 
-This ordering means that if the process crashes after `fsync()` but before updating the in-memory index, reopening the database can rebuild the index by scanning the saved frames. If a write or sync raises `OSError`, `_write()` tries to truncate the file back to the previous end, syncs that rollback, marks the engine poisoned, and raises the error.
+If a write or `fsync` fails, the engine truncates the file back to the previous end, calls `fsync` for the rollback, marks the database poisoned, and raises an error. If rollback also fails, the engine returns `UncertainWriteError` and the server reports `ERR <id> UNCERTAIN`. The failed write is never retried.
 
 
 ### Atomicity
-A batch is encoded into one frame. The frame is treated as the commit unit: recovery should apply the batch only if the complete frame passes the format checks. Operations inside a valid batch are applied in order, from first to last. For example, deleting X, putting X, and then deleting X should leave X absent.
+One batch is encoded as one frame with one CRC32 covering its length and payload. Recovery applies the frame only when all bytes are present and the CRC matches. A CRC-valid but malformed frame raises `CorruptError` and is not truncated. Operations inside a valid batch apply first to last.
 
-An incomplete frame or a frame with a CRC mismatch at the end is handled as a torn tail during recovery. A CRC-valid frame with malformed contents is reported as corruption rather than silently treated as a torn write. Confirm these cases against `src/format.py`.
-
+Readers take the same `threading.Lock` used by writes. A reader therefore sees the batch fully applied or not applied; it does not see half of a batch.
 
 ### Recoverability
-When opening the database, the engine takes an exclusive lock, removes leftover `.compact` and `.init` files, checks the database header, and scans frames to rebuild the index. If it finds a torn tail, it truncates the file to the last valid frame and calls `fsync()`.
+Opening the database takes `flock`, removes leftover `.compact` and `.init` files, and scans the database with `mmap`. New files are created through `.init`, followed by file `fsync`, `os.replace`, and parent-directory `fsync`. Recovery truncates a torn tail with `ftruncate` and `fsync`.
 
-During compaction, the engine writes live keys to a `.compact` file, syncs and closes that file, replaces the database using `os.replace()`, and syncs the parent directory. It then reopens the database and swaps in the new file and index.
+Compaction writes live keys to `.compact`, calls `fsync`, replaces the database with `os.replace`, syncs the parent directory, then reopens the file and swaps the engine state. Recovery only scans, removes temporary files, and truncates a torn tail, so repeating recovery after a process kill is safe.
 
-These steps are intended to leave a recoverable database if the process stops during recovery or compaction. The crash tests should confirm the behavior at each crash point. The code shown does not by itself prove behavior during a real power failure or on filesystems that have not been tested.
+Process-kill behavior was tested; power-cut behavior is argued from the ordering but was not tested.
