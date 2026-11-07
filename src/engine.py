@@ -141,6 +141,12 @@ class KVDB:
             if not fmt.check_header(m):
                 raise CorruptError(0, "bad header")
             stop = self._scan(m, size)
+            # EOF guard: every write ends the file with one 00 byte after the last
+            # complete frame (see _restore_tail_guard). If the scan stopped exactly
+            # one byte before EOF and that byte is 00, it is the guard, not a torn
+            # frame, so nothing is truncated. A 1-byte torn write whose byte is 00
+            # looks identical, and is harmless: that byte held the guard anyway.
+            # stop > HEADER_SIZE because an empty database never has a guard.
             guarded = (stop > fmt.HEADER_SIZE and size == stop + 1
                        and m[stop:stop + 1] == fmt.TAIL_GUARD)
         if stop < size and not guarded:
@@ -155,6 +161,16 @@ class KVDB:
         return stop
 
     def _restore_tail_guard(self, end):
+        """Write the 1-byte EOF guard (00) at `end`; return True if written.
+
+        The guard is expendable padding after the last complete frame, outside
+        every frame and CRC. If someone cuts one byte off the file, they cut the
+        guard, not an acknowledged record. The next append overwrites it.
+        An empty database gets no guard: there is no record to protect, so the
+        file stays exactly the 16-byte header. At a max_bytes
+        cap with no spare byte the guard is skipped, so the file never grows past
+        the cap; such a file is unprotected until room is made.
+        """
         if end == fmt.HEADER_SIZE:
             return False  # Empty databases remain a 16-byte header.
         if self.max_bytes is not None and end + 1 > self.max_bytes:

@@ -27,6 +27,9 @@ MAX_VALUE = 1048576
 MAX_OPS = 10000
 
 # Expendable file trailer, outside all frames; overwritten by the next append.
+# EOF guard: one 00 byte after the last complete frame of a nonempty file, so a
+# one-byte cut removes this byte instead of part of an acknowledged frame.
+# It is not part of any frame or CRC; decode_frame never sees it as a frame.
 TAIL_GUARD = b"\x00"
 
 HEADER = struct.Struct("<8sII")
