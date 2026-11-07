@@ -402,6 +402,48 @@ def f4(p):
         ", ".join(lost) if lost else "none")
 
 
+def tail_hex(p, label):
+    data = p.db.read_bytes()
+    start = max(0, len(data) - 16)
+    p.note("%s: last %d bytes (offsets %d..%d), hex:" % (label, len(data) - start, start, len(data) - 1))
+    p.note("  " + " ".join("%02x" % b for b in data[start:]))
+    return data
+
+
+def guard(p):
+    pairs = (("a", "1"), ("b", "2"), ("c", "3"))
+    base = p.base(pairs)
+    p.step("tail of the file")
+    data = tail_hex(p, "after 3 puts")
+    p.expect("last byte", data[-1:], b"\x00")
+    p.note("the final 00 is the EOF guard: 1 byte after the last complete frame, outside every frame and CRC")
+    full = len(data)
+    p.step("damage (no crash): truncate -s -1 $DB")
+    os.truncate(p.db, full - 1)
+    p.note("size %d -> %d" % (full, p.size()))
+    p.step("check (read-only)")
+    p.expect("check", p.check(), "OK")
+    p.step("open (recovery)")
+    p.open()
+    data = tail_hex(p, "after open")
+    p.expect("last byte after open", data[-1:], b"\x00")
+    p.expect("size after open", len(data), full)
+    p.note("guard restored; nothing else changed")
+    p.step("keys after recovery")
+    p.expect("dump", p.dump(), base)
+    print("PASS: one byte cut removed only the guard; no acknowledged record lost")
+    p.step("damage again: truncate -s -2 $DB (the guard and the last byte of frame c)")
+    os.truncate(p.db, full - 2)
+    p.note("size %d -> %d" % (full, p.size()))
+    p.ok("check", p.db)
+    p.open()
+    tail_hex(p, "after open")
+    found = p.dump()
+    p.expect("dump", found, {"a": "1", "b": "2"})
+    p.expect("last byte after open", p.db.read_bytes()[-1:], b"\x00")
+    return "a real torn frame is discarded, earlier data intact"
+
+
 SCENARIOS = {
     "A1": ("before_write on put -> new key absent", a1),
     "A2": ("torn_write on put -> new key absent, torn tail cut", a2),
@@ -419,6 +461,7 @@ SCENARIOS = {
     "C6": ("close_mid -> committed data intact", c6),
     "E1": ("--max-bytes cap -> ERR DISKFULL, nothing written", e1),
     "F4": ("file truncated by 1 byte -> open succeeds, at most last record lost", f4),
+    "GUARD": ("EOF guard live: 1-byte cut loses nothing, 2-byte cut loses only the last frame", guard),
 }
 
 
@@ -447,7 +490,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.list:
         for sid, (desc, _) in SCENARIOS.items():
-            print("%-3s %s" % (sid, desc))
+            print("%-5s %s" % (sid, desc))
         return 0
     if args.all:
         results = {}

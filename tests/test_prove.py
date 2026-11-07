@@ -25,7 +25,7 @@ class ProveTest(unittest.TestCase):
         self.assertNotIn("FAIL", result.stdout)
         self.assertNotIn("Traceback", result.stderr)
         table = result.stdout.split("ID | result", 1)[1]
-        self.assertEqual(table.count("| PASS"), 16, table)
+        self.assertEqual(table.count("| PASS"), 17, table)
         self.assertTrue(Path(directory, "A2.db").exists())  # kept for inspection
 
 
