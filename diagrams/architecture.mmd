@@ -1,7 +1,7 @@
 flowchart TD
   SERVE["serve stdin requests"] --> WORKERS["One worker/queue per writer; FIFO within each writer"]
   WORKERS --> API
-  API["Client API / CLI / stdin serve: put, delete, batch, get"] --> V["1. Validate operations; calculate full frame length"]
+  API["Client API / CLI / stdin serve"] -->|"put / delete / batch"| V["1. Validate operations; calculate full frame length"]
   V --> L["2. Acquire one per-handle mutex; reject poisoned handle"]
   L --> CAP["3. Disk-full guard: logical end + frame + 1-byte tail guard<br/>must fit max_bytes minus delete reserve; compact/retry once"]
   CAP --> ENC["4. Prepare CRC frame; large encodings use bounded 4 MiB chunks"]
@@ -9,7 +9,7 @@ flowchart TD
   W --> G["6. os.pwrite one 00 guard byte after frame"]
   G --> FS["7. os.fsync data file"]
   FS --> IX["8. Publish whole batch to RAM index; advance logical end<br/>optional crash-safe auto-compaction while mutex held"]
-  IX --> ACK["9. Release mutex; return success; serve prints/flushed ACK"]
+  IX --> ACK["9. Release mutex; return success; serve prints and flushes ACK"]
   API --> GET["get: same mutex; RAM index lookup; os.pread value"]
   GET --> RAM["RAM only: key -> value offset / length; index not persisted"]
   IX --> RAM
@@ -32,7 +32,8 @@ flowchart TD
   RENAME --> DIR["fsync parent directory; reopen new file"]
   DIR --> SWAP["Swap descriptor / index / logical end before next write"]
   SWAP --> DISK
-  CAP -->|"dead bytes available"| COMPACT
+  CAP -->|"dead bytes available; retry once"| COMPACT
+  SWAP -->|"cap retry returns to preflight"| CAP
   CAP -->|"cannot fit after reclaim"| FULL["DISKFULL; rejected mutation is not appended"]
   W -->|"I/O error"| ROLLBACK["Restore previous end + guard; fsync rollback; poison handle"]
   G -->|"I/O error"| ROLLBACK

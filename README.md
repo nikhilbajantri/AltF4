@@ -1,24 +1,65 @@
 # Kill It and Prove It
 
-Crash-safe embedded key-value storage in Python. Linux/ext4; Python 3.10+ standard library. Install Python, make and Git before an offline rehearsal. Run the real engine in Linux/WSL; --fake is only a practice stub.
+A Python key-value database that keeps successful writes after its process is killed. Keys and values are bytes. Put saves a value, get reads it, delete removes it, and batch commits several changes together. The companion torture tool kills the server and checks recovered data against an independent request/ACK history.
 
-## Build and test
+## Start here
 
-From the repository root: `make build`. Run regression tests with `make test`. Keep database/test files on real Linux storage, for example ~/tmp_test, not a RAM disk. See [the latest gap-fix report](docs/GAP_FIX_REPORT.md) and [offline plan](OFFLINE_TEST_PLAN.md) for measured results and remaining human checks.
+Use Ubuntu/Linux on a real ext4 filesystem, including Ubuntu in WSL. Required installed tools: Python 3.10+, make and Git. Runtime code uses Python's standard library; no pip packages or network downloads are required. Native Windows needs WSL for the real engine. The fake engine is only a practice stub and supplies no durability evidence.
 
-## Hands-on testing
+From the repository root, the single build command is:
 
-See [Arsh's measured manual rehearsal report](MANUAL_TEST_REPORT.md) for actual results and timing limits, and the [complete two-terminal command guide](docs/MANUAL_TEST_COMMANDS.md) for setup, commands, expected outputs and explanations.
+```bash
+make build
+```
 
-## Live proof
+Expected final line: BUILD OK. The build checks Python, compiles src/torturelib and marks kvdb/torture executable. Run the regression suite with make test. See OFFLINE_TEST_PLAN.md for a fresh local-clone rehearsal with connectivity physically disconnected.
 
-`./prove <ID>` replays one crash scenario live through the public `./kvdb` CLI: it builds a fresh database, SIGKILLs a command at a named crash point (`KVDB_CRASH=name:n`), then shows inspect, check, open and get output and prints PASS or FAIL with the invariant.
-Databases are kept in `~/tmp_test/prove/<ID>.db` (or `$KVDB_PROVE_DIR`) so they can be inspected afterwards.
-Covered IDs: A1 A2 A3 A4 A6 A7 B1 B5 B6 C1 C2 C3 C4 C6 E1 F4.
+## Try the database
 
-    ./prove --list
-    ./prove A2
-    ./prove --all
+Run these shell commands from the repository root in Ubuntu. The unique folder prevents overwriting an earlier test. Keep the data on Linux storage rather than /mnt/c, /mnt/d or a RAM disk.
+
+```bash
+mkdir -p "$HOME/tmp_test"
+DEMO_DIR=$(mktemp -d "$HOME/tmp_test/kvdb-readme-XXXXXX")
+DB="$DEMO_DIR/demo.db"
+./kvdb open "$DB"
+./kvdb put "$DB" name Arsh
+./kvdb get "$DB" name
+cat > "$DEMO_DIR/batch.txt" <<'OPS'
+put city Delhi
+put status ready
+del name
+OPS
+./kvdb batch "$DB" "$DEMO_DIR/batch.txt"
+./kvdb dump "$DB"
+./kvdb del "$DB" status
+./kvdb check "$DB"
+./kvdb serve "$DB"
+```
+
+The read returns Arsh. The batch returns OK and dump contains city=Delhi and status=ready, with name absent. The final check says OK. After serve prints READY, type the server requests below; they are not shell commands:
+
+```text
+put w1-1 name Arsh
+get w1-2 name
+batch w1-3
+put city Mumbai
+put status saved
+end
+quit
+```
+
+Expected replies: ACK w1-1, VAL w1-2 Arsh and ACK w1-3. quit drains queued work and returns to the shell. It is not a Bash command. For manual SIGKILL testing with two terminals, use [the complete command guide](docs/MANUAL_TEST_COMMANDS.md).
+
+## Which document to use
+
+| Document | Purpose |
+|---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | One current architecture diagram, all 32 scenario arguments, and durability/atomicity/recovery guarantees |
+| [BREAKING.md](BREAKING.md) | Fourteen crash locations, syscall ordering, known weaknesses, failures found and three next priorities |
+| [MANUAL_TEST_REPORT.md](MANUAL_TEST_REPORT.md) | Measured results, timing limits and original evidence |
+| [DEMO.md](DEMO.md) | The 15-minute judging sequence and source-question preparation |
+| [OFFLINE_TEST_PLAN.md](OFFLINE_TEST_PLAN.md) | Offline setup and human sign-off |
 
 ## On-disk format (one-page specification)
 
@@ -40,15 +81,31 @@ Keys: 1..1,024 bytes; values: 0..1,048,576 bytes; batch: 1..10,000 operations. A
 
 The guard costs one byte per nonempty file and is overwritten by the next frame. It protects a successful current write from literal one-byte tail removal. Legacy version-1 logs remain readable; open adds the guard if space allows. A legacy log already at/over a new cap stays readable without growth; make room and use the current writer/compactor before relying on tail protection. Older engines may remove the guard. [Current architecture and write/recovery diagram](ARCHITECTURE.md).
 
-## Write, recovery and compaction
+## Write order
 
-Validate/calculate size; acquire the engine mutex; reject poisoned handles; check full frame plus guard against max_bytes before allocating encoded data. Reclaim dead data and retry once if needed. Prepare CRC encoding (large encodings use bounded 4 MiB chunks). Loop on os.pwrite at the logical end, replacing the old guard; append the new guard; os.fsync; publish the whole batch/index/end; finish any automatic compaction; release lock and return. serve prints ACK only afterward.
+1. Validate all operations and calculate the complete frame size.
+2. Take the engine mutex; reject a poisoned/closed handle and check the cap, including the guard and delete reserve. Reclaim dead data and retry once if necessary.
+3. Prepare the CRC encoding, then loop on os.pwrite until the whole frame is written over the old guard. Large encodings use bounded 4 MiB chunks.
+4. Write the new final guard and call os.fsync on the database file.
+5. Publish the complete batch to the RAM index, finish any triggered compaction, release the mutex and return. Serve prints and flushes ACK afterward.
 
-On write/fsync error, truncate the attempted append, restore the guard, sync rollback and poison the handle. UNCERTAIN means rollback could not be confirmed: the operation can be present or absent on reopen. Reconcile application state before retrying.
+If append/sync fails, restore the old end and guard, sync the rollback, poison the handle and return an error. If rollback also fails, UNCERTAIN means the operation may be present or absent on reopen; reconcile state before retrying. An ACK is never an error response.
 
-Open locks path.lock with flock, removes stale .init/.compact files and creates a synced header through temp-file replacement if missing. It validates the header and replays complete checked frames to rebuild the index. It truncates an incomplete tail, restores the guard when space allows and syncs before readiness. A crash during scan/repair can be retried. get/items and writes share one mutex; separate get calls are not a multi-key snapshot.
+## Recovery
 
-Compaction holds that mutex, copies live keys into <=4 MiB/<=10,000-op frames in path.compact, checks the cap including the final guard, appends the guard if nonempty, fsyncs/closes, os.replace's the authoritative file, fsyncs the directory, then reopens/swaps descriptor/index/end. Empty compaction leaves 16 bytes. Triggers: explicit compact; cap retry with dead data; >50% dead bytes in a >4 MiB file.
+1. Acquire flock on path.lock, excluding another process handle.
+2. Remove stale .init/.compact files. If missing, create the synced header through .init, os.replace and parent-directory fsync. A short exact header prefix can be recreated as an unfinished empty initialization; other bad headers raise corruption.
+3. Validate the header, then scan declared frame boundaries and CRCs with mmap.
+4. Replay each complete valid frame in operation order to rebuild the RAM index.
+5. Stop at an incomplete/bad-CRC frame. CRC-valid malformed payloads raise CorruptError rather than being silently removed.
+6. Truncate a torn tail, restore the nonempty file's guard when the cap permits, and fsync the repair. Restore a missing guard on an otherwise complete log too. A crash during repair can be retried.
+7. Return ready with the recovered key count and recovery_ms. The internal logical end excludes the guard; physical file_bytes includes it.
+
+## Compaction and concurrency
+
+Compaction holds the same mutex as reads and writes. It copies live keys into path.compact using frames with at most 4 MiB payload and 10,000 operations, checks the cap including the guard, adds the guard if nonempty, fsyncs/closes the temporary file, replaces the database with os.replace, fsyncs the parent directory, then swaps the descriptor/index. Empty compaction leaves the 16-byte header.
+
+It runs explicitly, on a cap retry with reclaimable data, or when dead bytes exceed half of a log larger than 4 MiB. Readers and writers wait during it. One get or items call cannot see a half-published batch; separate get calls do not form a multi-key snapshot.
 
 ## API
 
@@ -97,6 +154,21 @@ The prefix before '-' names a writer. Each has its own worker/queue; responses a
 python3 -B -m tests.bench_f3_kill --seed 31337
 ```
 
-Default: 500 rounds. Modes: default, large-values, large-batch, recovery-crash, compaction, disk-full, crashpoints. The tool owns the independent sent/ACK log, kills with SIGKILL, then open/check/dump and whole-history checks. Seeded plans/delays do not reproduce OS scheduling exactly. It stops on invariant failure; tool errors never count as PASS. WSL runs should add `--host-storage-dir /mnt/d --min-free-gib 20` for the Windows volume hosting the VHD; check the system drive too. See [full offline preparation](OFFLINE_TEST_PLAN.md).
+Default: 500 rounds. Modes: default, large-values, large-batch, recovery-crash, compaction, disk-full, crashpoints. The tool owns the independent sent/ACK log, kills with SIGKILL, then open/check/dump and whole-history checks. Seeded plans/delays do not reproduce OS scheduling exactly. Oracle mismatches stop immediately and print expected/found values and operation IDs. Some malformed-output cases, including duplicate dump keys, are currently classified as tool errors and allow later rounds to continue; the final exit remains nonzero. Tool errors never count as PASS. This first-failure limitation is documented in BREAKING.md. WSL runs should add `--host-storage-dir /mnt/d --min-free-gib 20` for the Windows volume hosting the VHD; check the system drive too. See [full offline preparation](OFFLINE_TEST_PLAN.md).
 
 The maintained F3 benchmark now fails if reported recovery is >=2,000 ms or unavailable. Physical power loss, arbitrary bit rot, networking, sharding and MVCC are outside the required crash model. TTL is a proposed demo design only. Input retention and very long logs remain real limits; no claim covers the roughly 10 GiB combination of 10,000 distinct maximum-sized values.
+
+## Verification scope and live demonstrations
+
+The ordinary torture command does not enforce the two-second recovery limit and reuses each default database for three rounds. Use tools/ps_f1_same_database.py for 500 consecutive restarts of one file, and the strict F3/performance helpers for million-key and million-record recovery. tools/run_ps_acceptance.py orchestrates the wider suite; see [its command guide](tools/README.md).
+
+The [manual report](MANUAL_TEST_REPORT.md) records 153 tests and 4,400 crash rounds on f1a1c0c, with 200 default rounds in 103.159 seconds and 100+100 targeted rounds in 37.069 seconds. These are historical measurements with identified source, not a guarantee for every future seed, dataset or laptop. The required recovery threshold is strictly less than 2,000 ms; setup, writes and full-data verification take additional time.
+
+```bash
+python3 ./prove --list
+python3 ./prove A2
+```
+
+The live proof helper demonstrates selected scenarios and prints file/check/recovery output. It keeps files under ~/tmp_test/prove (or KVDB_PROVE_DIR); a repeated scenario replaces its own demonstration files. It is not the complete acceptance gate: B1/B6 use random torn prefixes, B6 does not enforce its printed timing, and F4 permits last-record loss in its assertion. Use the exact-prefix helpers, strict benchmarks and tail-guard regressions for those requirements.
+
+Seeded torture plans and delays aid reproduction; OS scheduling still varies, and the injected torn-prefix byte count is not currently controlled by the runner seed. The independent oracle has a 250,000-state search budget and reports a tool error if it cannot decide. PROMPTS.md remains pending by user choice, and physical Wi-Fi-off operation plus live explanations require human sign-off. Passing storage tests does not certify those deliverables.
