@@ -1,59 +1,54 @@
 # How I would break this
 
-## Crash points
-All 14 hooks are exercised by `--mode crashpoints` with at least 14 iterations and by the targeted regression campaign. Campaign counts and evidence are in `CRASH_TEST_REPORT.md`; current issue verification is in `docs/review_fixes.md`.
+Scope: Linux/ext4, honest fsync, abrupt process SIGKILL. Review against the current code; measured evidence is in MANUAL_TEST_REPORT.md and docs/GAP_FIX_REPORT.md. The printable companion reproduces this text in two pages.
 
-| Point | Disk state at interruption | Recovery result | Where in code |
-|---|---|---|---|
-| `init_before_rename` | Complete, synced `.init`; database path not replaced | Open removes stale `.init` and creates the database again | `src/engine.py:_create` |
-| `before_write` | Previous frames and their EOF guard | New operation is absent | `src/engine.py:_write` |
-| `torn_write` | Previous frames and an incomplete frame prefix written over the old guard | Recovery truncates the torn tail, restores the guard and preserves earlier frames | `src/engine.py:_write`, `src/engine.py:_recover` |
-| `after_write` | Complete frame and its guard may be in the page cache but are not synced | Process-crash recovery replays a complete frame with a valid CRC; power-loss behavior is untested | `src/engine.py:_write` |
-| `after_fsync` | Durable frame; index not yet updated | Recovery replays the complete operation | `src/engine.py:_write`, `src/engine.py:_scan` |
-| `after_return` | Engine returned; ACK not yet printed | The operation is durable, but the caller has no ACK | `src/serve.py:execute` |
-| `recovery_mid_scan` | Original file unchanged | Next open repeats the scan | `src/engine.py:_scan` |
-| `recovery_before_truncate` | Torn tail still present | Next open repeats the repair | `src/engine.py:_recover` |
-| `recovery_after_truncate` | Tail removed, guard restored and file synced | Next open scans the valid prefix | `src/engine.py:_recover` |
-| `compact_mid_copy` | Old authoritative file and partial temporary file | Open uses the old file and removes the temporary file | `src/engine.py:_copy_live` |
-| `compact_before_rename` | Old file and complete, synced temporary file | Open uses the old file and removes the temporary file | `src/engine.py:_compact_locked` |
-| `compact_after_rename` | Database path names the complete compacted file; directory sync has not run | Open recovers the file at the database path | `src/engine.py:_compact_locked` |
-| `compact_after_swap` | New file installed and directory synced | Open recovers the new file; later writes use its descriptor | `src/engine.py:_compact_locked` |
-| `close_mid` | Every acknowledged frame is already durable | Recovery reads the committed frames; close writes nothing | `src/engine.py:close` |
+## 1. Crash points
 
-If append and rollback both fail, the server returns `UNCERTAIN` and the handle refuses further mutations. Recovery may include a complete frame from that operation; callers reconcile the result. Evidence: `docs/uncertain_write_report.md`.
+Locations are exact functions; engine means src/engine.py, serve means src/serve.py. Complete frames are the commit unit; G means the optional 00 EOF guard. Named hooks exercise boundaries, not every kernel instruction.
 
-An `fsync` error is an injected I/O-failure test, not a fifteenth SIGKILL hook. The engine attempts rollback and poisons the handle so later writes cannot be acknowledged.
+| Point and function | Disk at interruption | Next open |
+|---|---|---|
+| init_before_rename; engine._create | Synced .init; destination not installed | Remove stale temp; initialize again |
+| before_write; engine._write | Prior complete frames + G | Replay prior state |
+| torn_write; engine._write | Partial new frame replaces G | Drop incomplete tail; restore G; sync |
+| after_write; engine._write | Full frame + G; no successful fsync yet | Replay complete frame; no power-cut claim |
+| after_fsync; engine._write | Frame + G synced; index not published | Replay durable operation |
+| after_return; serve.execute | Engine returned; ACK not printed | Operation survives without observed ACK |
+| recovery_mid_scan; engine._scan | Original bytes; partial RAM index | Rebuild index from the beginning |
+| recovery_before_truncate; engine._recover | Valid prefix + torn tail | Repeat truncation/guard repair |
+| recovery_after_truncate; engine._recover | Repaired prefix + G already synced | Replay repaired file |
+| compact_mid_copy; engine._copy_live | Old file; incomplete or complete temp | Use old file; remove temp |
+| compact_before_rename; engine._compact_locked | Old file; complete synced temp | Use old file; remove temp |
+| compact_after_rename; engine._compact_locked | New file installed; directory not synced | Use complete new file under process-kill model |
+| compact_after_swap; engine._compact_locked | Directory synced; new descriptor/index | Use new file; later writes use new descriptor |
+| close_mid; engine.close | Acknowledged frames already synced | Replay them; close adds no commit data |
 
+## 2. Ordering argument
 
-Recovery uses os.ftruncate, restores the guard when space permits, then os.fsync. Compaction copies live data and guard, fsyncs/closes the temp, calls os.replace, fsyncs the parent directory, then reopens/swaps the descriptor and index. Directory fsync also follows initial-file replacement. Atomic rename is assumed on the tested Linux ext4 filesystem.
+Append: validate/cap check, os.pwrite whole frame, os.pwrite G, os.fsync(file), publish index, return, then ACK. A complete frame is replayable even if index publication or the reply is interrupted. Recovery calls os.ftruncate for a torn tail, restores G when space allows, then os.fsync before readiness.
 
-A normal append follows `os.pwrite` through `_pwrite_all()` → `os.fsync(fd)` → index update → engine return → server ACK. Large frames are written in chunks of up to 4 MiB. An ACK therefore follows a successful file sync.
+Compaction: write live frames + G to .compact, fsync and close it, os.replace over the database, fsync the parent directory, then reopen/swap descriptor and index. Creation uses the same temp-sync/replace/directory-sync order. Atomic replacement is assumed on tested ext4; process death leaves the old or complete new authority. Rename itself is not interrupted inside the kernel by a hook.
 
-If a write or sync fails, the engine calls `ftruncate` to restore the previous end, rewrites the previous EOF guard and then calls `fsync` for the rollback. It poisons the handle and raises an error. If rollback also fails, it returns `UncertainWriteError` as `ERR <id> UNCERTAIN`. The failed write is not retried.
+Append/sync errors poison the handle and attempt truncate/guard restoration plus fsync rollback. If rollback fails, UNCERTAIN allows the operation to survive or disappear; no ACK is sent. A failure after compaction replacement poisons a handle whose old descriptor is obsolete. File sync covers append contents/size; directory sync covers replacement of a name.
 
-Appending does not change the database directory entry; syncing the database file covers its contents and size. Compaction changes the directory entry, so it syncs `.compact`, calls `os.replace`, then syncs the parent directory. A complete frame after `after_write` can survive SIGKILL because the kernel page cache remains available; a power cut can lose unsynced data. Power-cut behavior is not tested.
-## Known weaknesses
+## 3. Known weaknesses
 
-1. Tests do not simulate physical power cuts, storage firmware faults, or arbitrary middle-file bit rot. CRC32 detects accidental damage, not deliberate tampering.
-2. Compaction holds the global lock while copying live data; at 1M live keys this takes about 2.5 seconds. The index also uses RAM per key.
-3. `check` can report a false positive when a value contains bytes that resemble a valid frame. The `.lock` file is deliberately never deleted. Rename atomicity has been verified only on ext4.
-4. The shared-batch oracle has a 250,000-state search budget; pathological histories return a tool error without a verdict. Mutation histories are checked; general read-linearizability is not covered.
-5. Input and queued work still use RAM. Encoding memory changed from 80.1 MiB to 8.1 MiB; see `docs/batch_memory_review.md`.
-6. Legacy files already at a `max_bytes` cap have no spare byte for the EOF guard. They stay readable, but until room is made and a current write or compaction succeeds, removing their last byte still loses the last record. Older engines may also remove the guard.
-   
-## Failures found and detector trials
-- Zero-progress `pwrite` hung the engine. Commit `aa46909` added a progress guard and regression coverage.
-- Default random kills missed skipped truncation. Review R-04 added deliberate torn-write trials; seed `12345` detects the planted omission at iteration 1.
-- A slow exit after SIGKILL caused a TOOL ERROR at iteration 116 after the old 5-second wait. Commit `09e69ec` raised the wait to 60 seconds and lets the run continue past tool errors.
-- The WSL disk filled during the 7,000-round gate. Commit `4bc6000` added a free-space check.
-- Coverage was 71%; coverage tuning raised it to 84%. Commit `b4bd0be` records the change.
-- PR #16 reported duplicate dump output.
-- Issue #17 records CLI gaps.
+1. Recovery scans the entire log; long logs or laptop load can exceed two seconds. Compaction pauses readers/writers under one mutex. The RAM index grows with live keys.
+2. Encoding is chunked, but input batches and queues retain values. The combined 10,000 distinct 1 MiB-value case (about 10 GiB input) is not qualified; no global byte admission budget exists.
+3. Legacy logs already at a newly selected cap may have no room for G. They remain readable, but need space and a current write/compaction before one-byte-tail protection applies. Older engines may strip G.
+4. The concurrent oracle stops searching after 250,000 states. Some errors, including duplicate dump keys, become TOOL_ERROR and allow later rounds; final exit is nonzero. Ordinary torture does not enforce the two-second gate; separate benchmarks do. Torn-prefix random draws are not seeded by the runner.
+5. CRC32 is not authentication; arbitrary corruption and physical power failure are unqualified. check/inspect do not lock a mutating file, so their output is not a concurrent snapshot. The stable .lock file is intentional.
+
+## 4. What we tried that failed
+
+- Literal one-byte truncation previously lost the last acknowledged record. The synced expendable guard fixed F4; put/delete/batch/repeated restoration regressions verify it. Evidence: docs/GAP_FIX_REPORT.md.
+- The old shared-batch checker accepted mixed results that no whole-operation ordering allowed. The exact ordering search and tests/test_shared_batches.py now reject those states.
+- Scanning inside arbitrary value bytes could mistake embedded frame-like data for later records. Boundary-based scanning and tests/test_scan_boundaries.py fixed that false diagnosis; it is not a current known defect.
+- Zero-progress pwrite could hang. The progress guard now raises an error. Isolated detector trials also reject deliberately early ACKs, partial batches and skipped tail repair (tests/test_crash_campaign.py).
+- A loaded WSL disk exceeded the old five-second kill wait; a gate also ran out of host space. The wait is now 60 seconds with slow-exit reporting, and qualification checks host-volume reserves. Surviving tool errors never count as PASS.
 
 ## 5. If we had 24 more hours
 
-1. Add a byte-based admission budget for retained batch inputs/queues; stress distinct maximum-sized values under a stated RAM budget.
-2. Add a crash-safe checkpoint or bounded replay strategy, then benchmark 10 million records and cache/load variations with a hard two-second gate.
-3. Compare the concurrent oracle against a separate bounded reference model, and expand adversarial shared-key histories without silently raising its search budget.
-
-The original prompt log remains pending by the user's choice. Physical Wi-Fi-off rehearsal and live source-line answers need human sign-off; automated counts do not certify them. Printable two-page layout: output/pdf/BREAKING.pdf.
+1. Make judge runs fail fast on semantic output/tool failures, record/seed torn-prefix cuts, and expose persistent-file and strict recovery checks through one clear command.
+2. Add byte-based admission limits for retained inputs/queues; qualify distinct maximum-sized values under an explicit RAM budget.
+3. Add a crash-safe checkpoint or bounded replay strategy; test long logs and varied cache/load conditions against the strict two-second gate.
