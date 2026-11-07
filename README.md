@@ -59,7 +59,7 @@ Expected replies: ACK w1-1, VAL w1-2 Arsh and ACK w1-3. quit drains queued work 
 | [BREAKING.md](BREAKING.md) | Fourteen crash locations, syscall ordering, known weaknesses, failures found and three next priorities |
 | [MANUAL_TEST_REPORT.md](MANUAL_TEST_REPORT.md) | Measured results, timing limits and original evidence |
 | [DEMO.md](DEMO.md) | The 15-minute judging sequence and source-question preparation |
-| [OFFLINE_TEST_PLAN.md](OFFLINE_TEST_PLAN.md) | Offline setup and human sign-off |
+| [OFFLINE_TEST_PLAN.md](OFFLINE_TEST_PLAN.md) | Offline setup checklist |
 | [docs/EOF_GUARD.md](docs/EOF_GUARD.md) | the 1-byte EOF guard: why, how, edge cases |
 
 ## On-disk format (one-page specification)
@@ -172,4 +172,4 @@ python3 ./prove A2
 
 The live proof helper demonstrates selected scenarios and prints file/check/recovery output. It keeps files under ~/tmp_test/prove (or KVDB_PROVE_DIR); a repeated scenario replaces its own demonstration files. It is not the complete acceptance gate: B1/B6 use random torn prefixes, B6 does not enforce its printed timing, and F4 permits last-record loss in its assertion. Use the exact-prefix helpers, strict benchmarks and tail-guard regressions for those requirements.
 
-Seeded torture plans and delays aid reproduction; OS scheduling still varies, and the injected torn-prefix byte count is not currently controlled by the runner seed. The independent oracle has a 250,000-state search budget and reports a tool error if it cannot decide. PROMPTS.md remains pending by user choice, and physical Wi-Fi-off operation plus live explanations require human sign-off. Passing storage tests does not certify those deliverables.
+Seeded torture plans and delays aid reproduction; OS scheduling still varies, and the injected torn-prefix byte count is not currently controlled by the runner seed. The independent oracle has a 250,000-state search budget and reports a tool error if it cannot decide. Automated storage tests do not cover physical Wi-Fi-off operation or live explanations.
