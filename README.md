@@ -10,6 +10,16 @@ From the repository root: `make build`. Run regression tests with `make test`. K
 
 See [Arsh's measured manual rehearsal report](MANUAL_TEST_REPORT.md) for actual results and timing limits, and the [complete two-terminal command guide](docs/MANUAL_TEST_COMMANDS.md) for setup, commands, expected outputs and explanations.
 
+## Live proof
+
+`./prove <ID>` replays one crash scenario live through the public `./kvdb` CLI: it builds a fresh database, SIGKILLs a command at a named crash point (`KVDB_CRASH=name:n`), then shows inspect, check, open and get output and prints PASS or FAIL with the invariant.
+Databases are kept in `~/tmp_test/prove/<ID>.db` (or `$KVDB_PROVE_DIR`) so they can be inspected afterwards.
+Covered IDs: A1 A2 A3 A4 A6 A7 B1 B5 B6 C1 C2 C3 C4 C6 E1 F4.
+
+    ./prove --list
+    ./prove A2
+    ./prove --all
+
 ## On-disk format (one-page specification)
 
 All integers are unsigned little endian. One authoritative append-only data file; the index is RAM-only. Lock and temporary files are auxiliary.

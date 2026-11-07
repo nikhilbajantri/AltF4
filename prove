@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""./prove entry point: live crash proof for the demo (tools/prove.py)."""
+from tools.prove import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())

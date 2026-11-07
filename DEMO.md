@@ -136,7 +136,7 @@ NOTFOUND
 | Saving and rollback both fail | UNCERTAIN, no success promise; handle poisoned; reopen and reconcile |
 | B2 without a trailing commit marker | This design commits a complete CRC-prefixed frame; no separate absent-marker state exists. Explain the equivalent incomplete-frame case |
 
-Use [the exact 32-row proof](ARCHITECTURE.md) and [14 exact functions](BREAKING.md). Every member should explain disk bytes and the next recovery action, not merely say the tests passed.
+Use [the exact 32-row proof](ARCHITECTURE.md) and [14 exact functions](BREAKING.md). In the proof table's Verified-by column, add `./prove <ID>` for every row it covers (A1 A2 A3 A4 A6 A7 B1 B5 B6 C1 C2 C3 C4 C6 E1 F4; `./prove --list`), so a judge can rerun that row live in a few seconds. Every member should explain disk bytes and the next recovery action, not merely say the tests passed.
 
 ## TTL design extension (not implemented)
 
