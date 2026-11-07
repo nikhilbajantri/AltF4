@@ -236,6 +236,11 @@ def main(argv=None):
         parser.error("--iterations must be positive")
     if not 0 < args.min_free_gib < float("inf"):
         parser.error("--min-free-gib must be positive and finite")
+    for volume in args.host_storage_dir:
+        if not volume.is_dir():
+            # A typo or a WSL-only path (/mnt/d) on plain Linux would otherwise
+            # turn every round into the same TOOL ERROR.
+            parser.error("--host-storage-dir %s is not a directory on this machine" % volume)
     args.data_dir.mkdir(parents=True, exist_ok=True)
     directory = Path(tempfile.mkdtemp(prefix="seed-%s-" % args.seed, dir=args.data_dir))
     print("seed=%s mode=%s evidence=%s" % (args.seed, args.mode, directory), flush=True)

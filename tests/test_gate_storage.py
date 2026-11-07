@@ -13,6 +13,18 @@ from torturelib import runner
 
 
 class StorageTests(unittest.TestCase):
+    def test_missing_host_storage_dir_is_a_usage_error(self):
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(sys, 'platform', 'linux'), \
+             mock.patch.object(runner, 'iteration') as iteration, \
+             contextlib.redirect_stderr(io.StringIO()) as errors:
+            with self.assertRaises(SystemExit) as stop:
+                runner.main(['--iterations', '3', '--data-dir', directory,
+                             '--host-storage-dir', directory + '/no-such-mount'])
+            self.assertEqual(stop.exception.code, 2)
+            iteration.assert_not_called()
+            self.assertIn('is not a directory on this machine', errors.getvalue())
+
     def test_low_host_space_stops_before_starting_round(self):
         with tempfile.TemporaryDirectory() as directory, \
              mock.patch.object(sys, 'platform', 'linux'), \
