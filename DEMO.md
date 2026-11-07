@@ -129,6 +129,7 @@ NOTFOUND
 | Full frame before fsync | Full CRC-valid frame can survive; no ACK yet; not a power-cut claim |
 | After fsync before return/ACK | Complete frame and guard durable; replay operation even without reply |
 | Missing final guard byte | Full frames still valid; restore guard when cap permits; current writes reserve it |
+| EOF guard questions (F4, torn write, why the file ends in 00) | docs/EOF_GUARD.md, demo with ./prove GUARD |
 | During recovery scan/repair | Rebuild RAM index again and repeat any incomplete repair |
 | Compaction before replacement | Old authoritative file survives; remove leftover temp |
 | After replacement | Complete new file is authoritative; directory is synced before descriptor/index swap |

@@ -60,6 +60,7 @@ Expected replies: ACK w1-1, VAL w1-2 Arsh and ACK w1-3. quit drains queued work 
 | [MANUAL_TEST_REPORT.md](MANUAL_TEST_REPORT.md) | Measured results, timing limits and original evidence |
 | [DEMO.md](DEMO.md) | The 15-minute judging sequence and source-question preparation |
 | [OFFLINE_TEST_PLAN.md](OFFLINE_TEST_PLAN.md) | Offline setup and human sign-off |
+| [docs/EOF_GUARD.md](docs/EOF_GUARD.md) | the 1-byte EOF guard: why, how, edge cases |
 
 ## On-disk format (one-page specification)
 
