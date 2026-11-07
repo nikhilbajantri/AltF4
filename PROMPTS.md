@@ -1139,7 +1139,36 @@ Yes, use it
 > Arsh: add your prompts here, in time order, unedited.
 
 ## Srushti
-> Srushti: add your prompts here, in time order, unedited.
+
+#### [2026-11-06 time unavailable IST] [ChatGPT] [Srushti]
+```text
+i need to clone this in vscode
+```
+
+#### [2026-11-06 21:34 IST] [ChatGPT] [Srushti]
+```text
+what is kvdb
+```
+
+#### [2026-11-06 21:34 IST] [ChatGPT] [Srushti]
+```text
+tell me how to open wsl terminal
+```
+
+#### [2026-11-07 07:34 IST] [ChatGPT] [Srushti]
+```text
+To commit in GitHub
+```
+
+#### [2026-11-07 time unavailable IST] [ChatGPT] [Srushti]
+```text
+edit in trhgese do not change the format just add srushti promt in given promt.md file
+```
+
+#### [2026-11-07 time unavailable IST] [ChatGPT] [Srushti]
+```text
+after 11.20 am
+```
 
 ## Varsha
 > Varsha: add your prompts here, in time order, unedited.
